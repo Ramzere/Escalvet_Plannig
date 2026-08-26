@@ -45,21 +45,19 @@ export default function HoursSummary({
           Cette semaine et cumul prévisionnel depuis le 1er janvier
         </p>
       </div>
-      <div className="divide-y divide-sand-100">
+      <div className="grid gap-px bg-sand-100 sm:grid-cols-2 lg:grid-cols-4">
         {team.map((member) => {
           const wt = weekTotals(member.id, weekStart, shifts, contracts, absences)
           const projection = projectedBalance(member.id, weekStart, yearShifts, contracts, absences)
           return (
-            <div key={member.id} className="flex items-center justify-between px-4 py-3">
-              <div>
-                <p className="text-sm font-medium text-brand-900">{member.full_name}</p>
-                <p className="text-xs text-brand-700/60">
-                  {wt.isAbsentWeek
-                    ? 'Absent(e) cette semaine'
-                    : `${formatHours(wt.actualHours)} sur ${formatHours(wt.theoreticalHours)} prévues`}
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
+            <div key={member.id} className="flex flex-col gap-1 bg-white px-4 py-3">
+              <p className="text-sm font-medium text-brand-900">{member.full_name}</p>
+              <p className="text-xs text-brand-700/60">
+                {wt.isAbsentWeek
+                  ? 'Absent(e) cette semaine'
+                  : `${formatHours(wt.actualHours)} sur ${formatHours(wt.theoreticalHours)} prévues`}
+              </p>
+              <div className="mt-1 flex items-center justify-between gap-2">
                 <DeltaBadge delta={wt.delta} />
                 <span className="text-[11px] text-brand-700/50">
                   Cumul {new Date(weekStart).getFullYear()} : {formatHours(projection.cumulativeDelta)}
@@ -69,7 +67,7 @@ export default function HoursSummary({
           )
         })}
         {team.length === 0 && (
-          <p className="px-4 py-6 text-center text-sm text-brand-700/60">
+          <p className="col-span-full bg-white px-4 py-6 text-center text-sm text-brand-700/60">
             Personne dans ce groupe pour l&apos;instant.
           </p>
         )}

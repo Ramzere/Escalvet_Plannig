@@ -91,7 +91,7 @@ export default function PlanningPage() {
         onChanged={reloadAbsences}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+      <div className="space-y-4">
         <div className="overflow-x-auto rounded-2xl border border-sand-200 bg-white">
           <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
             <thead>
