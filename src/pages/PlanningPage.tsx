@@ -124,18 +124,22 @@ export default function PlanningPage() {
                     return (
                       <td key={i} className="border-b border-l border-sand-100 px-2 py-2">
                         <div className="space-y-1.5">
-                          {dayShifts.map((s) => (
-                            <ShiftPill
-                              key={s.id}
-                              shift={s}
-                              employeeName={nameOf(s.employee_id)}
-                              onClick={
-                                isOwner
-                                  ? () => setEditing({ workDate: iso, period: period.key, shift: s })
-                                  : undefined
-                              }
-                            />
-                          ))}
+                          {dayShifts.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {dayShifts.map((s) => (
+                                <ShiftPill
+                                  key={s.id}
+                                  shift={s}
+                                  employeeName={nameOf(s.employee_id)}
+                                  onClick={
+                                    isOwner
+                                      ? () => setEditing({ workDate: iso, period: period.key, shift: s })
+                                      : undefined
+                                  }
+                                />
+                              ))}
+                            </div>
+                          )}
                           {isOwner && (
                             <button
                               onClick={() =>

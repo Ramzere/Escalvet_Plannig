@@ -24,7 +24,7 @@ export default function ShiftPill({
       type="button"
       onClick={onClick}
       disabled={!onClick}
-      className={`w-full rounded-lg border px-2 py-1.5 text-left text-xs leading-snug transition ${
+      className={`min-w-[90px] flex-1 rounded-lg border px-2 py-1.5 text-left text-xs leading-snug transition ${
         POSTE_STYLES[shift.poste]
       } ${onClick ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
       title={POSTE_SHORT_LABELS[shift.poste]}
