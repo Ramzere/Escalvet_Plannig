@@ -1,0 +1,206 @@
+import { useState, type FormEvent } from 'react'
+import { supabase } from '../lib/supabase'
+import { useContracts, useTeam } from '../hooks/usePlanningData'
+import { formatHours } from '../lib/hours'
+import type { Group } from '../types'
+
+export default function TeamAdminPage() {
+  const { team, loading, reload } = useTeam()
+  const { contracts, reload: reloadContracts } = useContracts()
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const selected = team.find((t) => t.id === selectedId) ?? null
+  const selectedContracts = contracts
+    .filter((c) => c.employee_id === selectedId)
+    .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))
+
+  async function updateProfile(field: string, value: string | boolean) {
+    if (!selectedId) return
+    await supabase.from('profiles').update({ [field]: value }).eq('id', selectedId)
+    reload()
+  }
+
+  async function addContract(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!selectedId) return
+    const form = new FormData(e.currentTarget)
+    const weekly_hours = Number(form.get('weekly_hours'))
+    const effective_from = String(form.get('effective_from'))
+    const label = String(form.get('label') || 'Contrat')
+    if (!weekly_hours || !effective_from) return
+    await supabase.from('contracts').insert({
+      employee_id: selectedId,
+      weekly_hours,
+      effective_from,
+      label,
+    })
+    ;(e.target as HTMLFormElement).reset()
+    reloadContracts()
+  }
+
+  async function deleteContract(id: string) {
+    await supabase.from('contracts').delete().eq('id', id)
+    reloadContracts()
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-2xl border border-sand-200 bg-white p-2">
+        <p className="px-2 py-2 text-xs font-medium text-brand-700/60">Équipe</p>
+        {loading && <p className="px-2 py-2 text-sm text-brand-700/50">Chargement…</p>}
+        <div className="space-y-1">
+          {team.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setSelectedId(t.id)}
+              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${
+                selectedId === t.id ? 'bg-brand-600 text-white' : 'hover:bg-sand-100 text-brand-900'
+              }`}
+            >
+              <span>
+                {t.full_name}
+                {t.is_owner ? ' 👑' : ''}
+              </span>
+              <span
+                className={`text-xs ${selectedId === t.id ? 'text-white/70' : 'text-brand-700/50'}`}
+              >
+                {t.group_name === 'asv' ? 'ASV' : 'Véto'}
+              </span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 rounded-lg bg-sand-50 px-3 py-2 text-xs text-brand-700/60">
+          Pour créer un nouveau compte : Dashboard Supabase → Authentication → Add user (email +
+          mot de passe). Le profil apparaît ensuite ici automatiquement, à compléter.
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {!selected && (
+          <div className="rounded-2xl border border-sand-200 bg-white p-6 text-sm text-brand-700/60">
+            Sélectionne une personne dans la liste pour voir et modifier son profil et son
+            contrat.
+          </div>
+        )}
+
+        {selected && (
+          <>
+            <div className="rounded-2xl border border-sand-200 bg-white p-5">
+              <h2 className="mb-4 text-sm font-semibold text-brand-900">Profil</h2>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">Nom</label>
+                  <input
+                    defaultValue={selected.full_name}
+                    onBlur={(e) => updateProfile('full_name', e.target.value)}
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">Groupe</label>
+                  <select
+                    value={selected.group_name}
+                    onChange={(e) => updateProfile('group_name', e.target.value as Group)}
+                    className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-2 text-sm outline-none focus:border-brand-400"
+                  >
+                    <option value="asv">ASV</option>
+                    <option value="veterinaire">Vétérinaire</option>
+                  </select>
+                </div>
+                <label className="flex items-center gap-2 text-sm text-brand-900">
+                  <input
+                    type="checkbox"
+                    checked={selected.is_owner}
+                    onChange={(e) => updateProfile('is_owner', e.target.checked)}
+                  />
+                  Propriétaire (accès total)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-brand-900">
+                  <input
+                    type="checkbox"
+                    checked={selected.active}
+                    onChange={(e) => updateProfile('active', e.target.checked)}
+                  />
+                  Compte actif
+                </label>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-sand-200 bg-white p-5">
+              <h2 className="mb-1 text-sm font-semibold text-brand-900">Contrat</h2>
+              <p className="mb-4 text-xs text-brand-700/60">
+                Le nombre d&apos;heures théoriques hebdomadaires sert au calcul automatique du
+                solde d&apos;heures. Ajoute une nouvelle ligne pour un changement de contrat en
+                cours d&apos;année.
+              </p>
+
+              <form onSubmit={addContract} className="mb-4 flex flex-wrap items-end gap-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">Libellé</label>
+                  <input
+                    name="label"
+                    placeholder="Temps plein"
+                    className="w-32 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">
+                    Heures / semaine
+                  </label>
+                  <input
+                    name="weekly_hours"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    required
+                    className="w-28 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">
+                    Valable à partir du
+                  </label>
+                  <input
+                    name="effective_from"
+                    type="date"
+                    required
+                    className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+                >
+                  Ajouter
+                </button>
+              </form>
+
+              <div className="divide-y divide-sand-100">
+                {selectedContracts.map((c) => (
+                  <div key={c.id} className="flex items-center justify-between py-2 text-sm">
+                    <div>
+                      <p className="font-medium text-brand-900">{c.label}</p>
+                      <p className="text-xs text-brand-700/60">
+                        {formatHours(c.weekly_hours)} / semaine · à partir du{' '}
+                        {new Date(c.effective_from).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => deleteContract(c.id)}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                ))}
+                {selectedContracts.length === 0 && (
+                  <p className="py-3 text-sm text-brand-700/60">Aucun contrat renseigné.</p>
+                )}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}

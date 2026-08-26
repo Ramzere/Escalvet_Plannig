@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand */
+  --color-brand-50: #f0fbf9;
+  --color-brand-100: #d6f3ee;
+  --color-brand-200: #ade7dd;
+  --color-brand-300: #7dd4c6;
+  --color-brand-400: #4bb8a8;
+  --color-brand-500: #2f9c8d;
+  --color-brand-600: #237d72;
+  --color-brand-700: #1f645d;
+  --color-brand-800: #1c514c;
+  --color-brand-900: #194440;
+
+  /* Neutral warm background */
+  --color-sand-50: #faf9f6;
+  --color-sand-100: #f4f2ec;
+  --color-sand-200: #e9e5da;
+  --color-sand-300: #d9d3c2;
+
+  /* Poste colors (from the paper planning) */
+  --color-poste-bleu: #4b7bd6;
+  --color-poste-bleu-bg: #e9f0fd;
+  --color-poste-violet: #8b5fbf;
+  --color-poste-violet-bg: #f1eafb;
+  --color-poste-vert: #4a9d5f;
+  --color-poste-vert-bg: #e9f7ec;
+  --color-poste-seul: #c17a2c;
+  --color-poste-seul-bg: #fbf0e2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--color-sand-50);
+  color: var(--color-brand-900);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  min-height: 100svh;
+}
