@@ -93,7 +93,7 @@ export default function PlanningPage() {
 
       <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
         <div className="overflow-x-auto rounded-2xl border border-sand-200 bg-white">
-          <table className="w-full min-w-[720px] table-fixed border-collapse text-sm">
+          <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
             <thead>
               <tr>
                 <th className="w-24 border-b border-sand-200 bg-sand-50 px-3 py-2 text-left text-xs font-medium text-brand-700/70">
@@ -102,7 +102,7 @@ export default function PlanningPage() {
                 {days.map((d, i) => (
                   <th
                     key={i}
-                    className="border-b border-l border-sand-200 bg-sand-50 px-3 py-2 text-left text-xs font-medium text-brand-900"
+                    className="w-40 border-b border-l border-sand-200 bg-sand-50 px-3 py-2 text-left text-xs font-medium text-brand-900"
                   >
                     {DAY_LABELS[i]}
                     <span className="block font-normal text-brand-700/60">

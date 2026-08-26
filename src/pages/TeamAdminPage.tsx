@@ -91,6 +91,7 @@ export default function TeamAdminPage() {
                 <div>
                   <label className="mb-1 block text-xs font-medium text-brand-900">Nom</label>
                   <input
+                    key={selected.id}
                     defaultValue={selected.full_name}
                     onBlur={(e) => updateProfile('full_name', e.target.value)}
                     className="w-full rounded-lg border border-sand-300 bg-sand-50 px-3 py-2 text-sm outline-none focus:border-brand-400"
