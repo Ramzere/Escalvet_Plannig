@@ -74,7 +74,8 @@ export default function TeamAdminPage() {
     reloadContracts()
   }
 
-  async function deleteContract(id: string) {
+  async function deleteContract(id: string, label: string) {
+    if (!window.confirm(`Supprimer le contrat "${label}" ? Cette action est définitive.`)) return
     setContractError(null)
     const { error } = await supabase.from('contracts').delete().eq('id', id)
     if (error) {
@@ -247,7 +248,7 @@ export default function TeamAdminPage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => deleteContract(c.id)}
+                      onClick={() => deleteContract(c.id, c.label)}
                       className="text-xs font-medium text-red-600 hover:underline"
                     >
                       Supprimer

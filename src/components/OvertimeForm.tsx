@@ -65,6 +65,7 @@ export default function OvertimeForm({
   }
 
   async function cancel(id: string) {
+    if (!window.confirm('Annuler cette déclaration d’heures sup ?')) return
     setError(null)
     const { error } = await supabase.from('overtime_requests').delete().eq('id', id)
     if (error) {

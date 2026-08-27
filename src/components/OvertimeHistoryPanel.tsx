@@ -46,6 +46,7 @@ export default function OvertimeHistoryPanel({
   }
 
   async function remove(id: string) {
+    if (!window.confirm('Supprimer définitivement cette déclaration d’heures sup ?')) return
     setBusy(id)
     setError(null)
     const { error } = await supabase.from('overtime_requests').delete().eq('id', id)

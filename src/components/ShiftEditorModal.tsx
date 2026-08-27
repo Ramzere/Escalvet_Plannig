@@ -79,6 +79,7 @@ export default function ShiftEditorModal({
 
   async function handleDelete() {
     if (!existing) return
+    if (!window.confirm('Supprimer ce créneau ?')) return
     setSaving(true)
     const { error } = await supabase.from('shifts').delete().eq('id', existing.id)
     setSaving(false)
