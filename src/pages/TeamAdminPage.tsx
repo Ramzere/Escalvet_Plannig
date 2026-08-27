@@ -10,6 +10,7 @@ import {
 } from '../hooks/usePlanningData'
 import { formatHours } from '../lib/hours'
 import type { Group } from '../types'
+import ErrorBanner from '../components/ErrorBanner'
 import OvertimePendingPanel from '../components/OvertimePendingPanel'
 import OvertimeHistoryPanel from '../components/OvertimeHistoryPanel'
 import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
@@ -21,6 +22,8 @@ export default function TeamAdminPage() {
   const { absences } = useAbsences()
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  const [contractError, setContractError] = useState<string | null>(null)
 
   const previousYear = new Date().getFullYear() - 1
   const previousYearRange = useMemo(
@@ -39,30 +42,45 @@ export default function TeamAdminPage() {
 
   async function updateProfile(field: string, value: string | boolean) {
     if (!selectedId) return
-    await supabase.from('profiles').update({ [field]: value }).eq('id', selectedId)
+    setProfileError(null)
+    const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', selectedId)
+    if (error) {
+      setProfileError(error.message)
+      return
+    }
     reload()
   }
 
   async function addContract(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!selectedId) return
+    setContractError(null)
     const form = new FormData(e.currentTarget)
     const weekly_hours = Number(form.get('weekly_hours'))
     const effective_from = String(form.get('effective_from'))
     const label = String(form.get('label') || 'Contrat')
     if (!weekly_hours || !effective_from) return
-    await supabase.from('contracts').insert({
+    const { error } = await supabase.from('contracts').insert({
       employee_id: selectedId,
       weekly_hours,
       effective_from,
       label,
     })
+    if (error) {
+      setContractError(error.message)
+      return
+    }
     ;(e.target as HTMLFormElement).reset()
     reloadContracts()
   }
 
   async function deleteContract(id: string) {
-    await supabase.from('contracts').delete().eq('id', id)
+    setContractError(null)
+    const { error } = await supabase.from('contracts').delete().eq('id', id)
+    if (error) {
+      setContractError(error.message)
+      return
+    }
     reloadContracts()
   }
 
@@ -126,6 +144,7 @@ export default function TeamAdminPage() {
           <>
             <div className="rounded-2xl border border-sand-200 bg-white p-5">
               <h2 className="mb-4 text-sm font-semibold text-brand-900">Profil</h2>
+              <ErrorBanner message={profileError} />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-brand-900">Nom</label>
@@ -173,6 +192,8 @@ export default function TeamAdminPage() {
                 solde d&apos;heures. Ajoute une nouvelle ligne pour un changement de contrat en
                 cours d&apos;année.
               </p>
+
+              <ErrorBanner message={contractError} />
 
               <form onSubmit={addContract} className="mb-4 flex flex-wrap items-end gap-2">
                 <div>

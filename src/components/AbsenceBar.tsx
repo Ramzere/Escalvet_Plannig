@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Profile, WeeklyAbsence } from '../types'
+import ErrorBanner from './ErrorBanner'
 
 export default function AbsenceBar({
   team,
@@ -16,6 +17,7 @@ export default function AbsenceBar({
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const absentIds = new Set(
     absences.filter((a) => a.week_start === weekStart).map((a) => a.employee_id)
   )
@@ -24,18 +26,21 @@ export default function AbsenceBar({
 
   async function toggle(employeeId: string) {
     setBusy(employeeId)
-    if (absentIds.has(employeeId)) {
-      await supabase
-        .from('weekly_absences')
-        .delete()
-        .eq('employee_id', employeeId)
-        .eq('week_start', weekStart)
-    } else {
-      await supabase
-        .from('weekly_absences')
-        .insert({ employee_id: employeeId, week_start: weekStart, reason: 'Vacances' })
-    }
+    setError(null)
+    const { error } = absentIds.has(employeeId)
+      ? await supabase
+          .from('weekly_absences')
+          .delete()
+          .eq('employee_id', employeeId)
+          .eq('week_start', weekStart)
+      : await supabase
+          .from('weekly_absences')
+          .insert({ employee_id: employeeId, week_start: weekStart, reason: 'Vacances' })
     setBusy(null)
+    if (error) {
+      setError(error.message)
+      return
+    }
     onChanged()
   }
 
@@ -56,6 +61,7 @@ export default function AbsenceBar({
       <p className="mb-2 text-xs font-medium text-brand-700/70">
         Marquer une absence pour toute la semaine (exclue du calcul d&apos;heures)
       </p>
+      <ErrorBanner message={error} />
       <div className="flex flex-wrap gap-2">
         {team.map((t) => {
           const absent = absentIds.has(t.id)

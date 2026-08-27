@@ -4,6 +4,7 @@ import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import { formatHours, overtimeHoursOf, weekDays } from '../lib/hours'
 import type { OvertimeRequest, OvertimeStatus } from '../types'
+import ErrorBanner from './ErrorBanner'
 
 const STATUS_LABEL: Record<OvertimeStatus, string> = {
   pending: 'En attente',
@@ -29,6 +30,7 @@ export default function OvertimeForm({
   onChanged: () => void
 }) {
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const days = weekDays(weekStart)
   const dayIsos = days.map((d) => format(d, 'yyyy-MM-dd'))
 
@@ -45,7 +47,8 @@ export default function OvertimeForm({
     const note = String(form.get('note') || '').trim()
     if (hours <= 0 && minutes <= 0) return
     setSubmitting(true)
-    await supabase.from('overtime_requests').insert({
+    setError(null)
+    const { error } = await supabase.from('overtime_requests').insert({
       employee_id: employeeId,
       work_date,
       hours,
@@ -53,12 +56,21 @@ export default function OvertimeForm({
       note: note || null,
     })
     setSubmitting(false)
+    if (error) {
+      setError("La déclaration n'a pas pu être envoyée, réessaie.")
+      return
+    }
     ;(e.target as HTMLFormElement).reset()
     onChanged()
   }
 
   async function cancel(id: string) {
-    await supabase.from('overtime_requests').delete().eq('id', id)
+    setError(null)
+    const { error } = await supabase.from('overtime_requests').delete().eq('id', id)
+    if (error) {
+      setError("L'annulation n'a pas pu être enregistrée, réessaie.")
+      return
+    }
     onChanged()
   }
 
@@ -69,6 +81,8 @@ export default function OvertimeForm({
         Déclare tes heures sup faites cette semaine. Elles ne compteront dans ton solde qu&apos;une
         fois validées par le/la propriétaire.
       </p>
+
+      <ErrorBanner message={error} />
 
       <form onSubmit={submit} className="mb-3 flex flex-wrap items-end gap-2">
         <div>

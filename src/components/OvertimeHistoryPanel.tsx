@@ -3,6 +3,7 @@ import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import type { OvertimeRequest, OvertimeStatus, Profile } from '../types'
+import ErrorBanner from './ErrorBanner'
 
 const STATUS_LABEL: Record<OvertimeStatus, string> = {
   pending: 'En attente',
@@ -20,6 +21,7 @@ export default function OvertimeHistoryPanel({
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const history = requests
     .filter((r) => r.status !== 'pending')
     .sort((a, b) => (a.work_date < b.work_date ? 1 : -1))
@@ -30,18 +32,28 @@ export default function OvertimeHistoryPanel({
 
   async function update(id: string, fields: Partial<Pick<OvertimeRequest, 'hours' | 'minutes' | 'status'>>) {
     setBusy(id)
-    await supabase
+    setError(null)
+    const { error } = await supabase
       .from('overtime_requests')
       .update({ ...fields, decided_at: new Date().toISOString() })
       .eq('id', id)
     setBusy(null)
+    if (error) {
+      setError(error.message)
+      return
+    }
     onChanged()
   }
 
   async function remove(id: string) {
     setBusy(id)
-    await supabase.from('overtime_requests').delete().eq('id', id)
+    setError(null)
+    const { error } = await supabase.from('overtime_requests').delete().eq('id', id)
     setBusy(null)
+    if (error) {
+      setError(error.message)
+      return
+    }
     onChanged()
   }
 
@@ -53,6 +65,11 @@ export default function OvertimeHistoryPanel({
           Toutes les déclarations validées ou refusées. Modifiable à tout moment.
         </p>
       </div>
+      {error && (
+        <div className="px-4 pt-3">
+          <ErrorBanner message={error} />
+        </div>
+      )}
       <div className="divide-y divide-sand-100">
         {history.map((r) => (
           <div

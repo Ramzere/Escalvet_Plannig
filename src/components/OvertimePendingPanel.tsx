@@ -4,6 +4,7 @@ import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import { formatHours, overtimeHoursOf } from '../lib/hours'
 import type { OvertimeRequest, Profile } from '../types'
+import ErrorBanner from './ErrorBanner'
 
 export default function OvertimePendingPanel({
   team,
@@ -15,6 +16,7 @@ export default function OvertimePendingPanel({
   onChanged: () => void
 }) {
   const [busy, setBusy] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const pending = requests
     .filter((r) => r.status === 'pending')
     .sort((a, b) => (a.work_date < b.work_date ? -1 : 1))
@@ -25,11 +27,16 @@ export default function OvertimePendingPanel({
 
   async function decide(id: string, status: 'approved' | 'rejected') {
     setBusy(id)
-    await supabase
+    setError(null)
+    const { error } = await supabase
       .from('overtime_requests')
       .update({ status, decided_at: new Date().toISOString() })
       .eq('id', id)
     setBusy(null)
+    if (error) {
+      setError(error.message)
+      return
+    }
     onChanged()
   }
 
@@ -45,6 +52,11 @@ export default function OvertimePendingPanel({
           </span>
         </h2>
       </div>
+      {error && (
+        <div className="px-4 pt-3">
+          <ErrorBanner message={error} />
+        </div>
+      )}
       <div className="divide-y divide-amber-200">
         {pending.map((r) => (
           <div

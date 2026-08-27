@@ -121,6 +121,3 @@ gh repo create escalvet --private --source=. --push
 - **Qui modifie quoi** : seule la personne propriétaire (is_owner) peut
   créer/modifier/supprimer des créneaux, gérer les comptes et les contrats.
   Les autres comptes sont en lecture seule sur le planning de leur groupe.
-
-
-pymxeq-defDyg-7wibwu
