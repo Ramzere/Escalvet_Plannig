@@ -17,6 +17,7 @@ import ShiftEditorModal from '../components/ShiftEditorModal'
 import HoursSummary from '../components/HoursSummary'
 import AbsenceBar from '../components/AbsenceBar'
 import OvertimeForm from '../components/OvertimeForm'
+import PosteLegend from '../components/PosteLegend'
 
 const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const PERIODS: { key: Period; label: string }[] = [
@@ -170,6 +171,8 @@ export default function PlanningPage() {
             </tbody>
           </table>
         </div>
+
+        <PosteLegend />
 
         <HoursSummary
           team={visibleTeam}

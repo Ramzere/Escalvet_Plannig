@@ -52,14 +52,14 @@ export interface OvertimeRequest {
 
 export const POSTE_LABELS: Record<Poste, string> = {
   bleu: 'Chenil / chirurgie / examens complémentaires / nettoyage chirurgie',
-  violet: 'Accueil / rangement / nettoyage et stock des salles (hors chirurgie)',
-  vert: 'Volante : aide aux vétérinaires, propreté et nettoyage de tout l’arrière / chenil du soir',
-  seul: 'Seul(e) : tous les postes',
+  violet: 'Accueil / rangement / nettoyage et stock des salles sauf chirurgie',
+  vert: 'Volante : aide aux vétérinaires (radios, analyses, nettoyage salle), propreté et nettoyage de TOUT l’arrière / chenil du soir',
+  seul: 'Tous les postes',
 }
 
 export const POSTE_SHORT_LABELS: Record<Poste, string> = {
-  bleu: 'Bleu',
-  violet: 'Violet',
-  vert: 'Vert',
-  seul: 'Seul(e)',
+  bleu: 'Chenil / Chirurgie',
+  violet: 'Accueil',
+  vert: 'Volante',
+  seul: 'Tous les postes',
 }
