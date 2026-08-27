@@ -2,6 +2,23 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
 
+/**
+ * Recharge `onChange` dès qu'une ligne de `table` change côté Supabase
+ * (insert/update/delete), pour que les autres personnes connectées voient
+ * les changements sans avoir à recharger la page.
+ */
+function useTableChanges(table: string, onChange: () => void) {
+  useEffect(() => {
+    const channel = supabase
+      .channel(`${table}-changes-${Math.random().toString(36).slice(2)}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [table, onChange])
+}
+
 export function useTeam() {
   const [team, setTeam] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
@@ -19,6 +36,7 @@ export function useTeam() {
   useEffect(() => {
     reload()
   }, [reload])
+  useTableChanges('profiles', reload)
 
   return { team, loading, reload }
 }
@@ -40,6 +58,7 @@ export function useContracts() {
   useEffect(() => {
     reload()
   }, [reload])
+  useTableChanges('contracts', reload)
 
   return { contracts, loading, reload }
 }
@@ -60,6 +79,7 @@ export function useAbsences() {
   useEffect(() => {
     reload()
   }, [reload])
+  useTableChanges('weekly_absences', reload)
 
   return { absences, loading, reload }
 }
@@ -87,6 +107,7 @@ export function useOvertimeRequests() {
   useEffect(() => {
     reload()
   }, [reload])
+  useTableChanges('overtime_requests', reload)
 
   return { requests, loading, reload }
 }
@@ -112,6 +133,7 @@ export function useShiftsRange(fromIso: string, toIso: string) {
   useEffect(() => {
     reload()
   }, [reload])
+  useTableChanges('shifts', reload)
 
   return { shifts, loading, reload }
 }

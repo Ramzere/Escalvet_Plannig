@@ -265,6 +265,28 @@ create policy "overtime_requests_owner_write" on public.overtime_requests
   with check (is_owner());
 
 -- ============================================================================
+-- REALTIME
+-- Permet à l'appli de recevoir les changements en direct (un employé voit
+-- une modif du propriétaire sans recharger la page, et inversement). Sans
+-- ça, les abonnements postgres_changes du client ne reçoivent rien.
+-- ============================================================================
+
+do $$
+declare
+  t text;
+begin
+  foreach t in array array['profiles', 'contracts', 'shifts', 'weekly_absences', 'overtime_requests']
+  loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
+
+-- ============================================================================
 -- FIN — Rappel : pour créer le tout premier compte propriétaire, exécute
 -- ensuite dans le SQL Editor (après avoir créé l'utilisateur dans
 -- Authentication > Users) :
