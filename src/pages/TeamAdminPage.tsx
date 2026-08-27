@@ -11,6 +11,8 @@ import {
 import { formatHours } from '../lib/hours'
 import type { Group } from '../types'
 import OvertimePendingPanel from '../components/OvertimePendingPanel'
+import OvertimeHistoryPanel from '../components/OvertimeHistoryPanel'
+import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
 import PreviousYearBalance from '../components/PreviousYearBalance'
 
 export default function TeamAdminPage() {
@@ -67,6 +69,10 @@ export default function TeamAdminPage() {
   return (
     <div className="space-y-4">
       <OvertimePendingPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
+
+      <OvertimeYearlySummary team={team} requests={overtimeRequests} />
+
+      <OvertimeHistoryPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
 
       <PreviousYearBalance
         team={team}
