@@ -101,7 +101,7 @@ export default function PlanningPage() {
       />
 
       <div className="space-y-4">
-        <div className="overflow-x-auto rounded-2xl border border-sand-200 bg-white">
+        <div className="hidden overflow-x-auto rounded-2xl border border-sand-200 bg-white sm:block">
           <table className="w-full min-w-[1080px] table-fixed border-collapse text-sm">
             <thead>
               <tr>
@@ -186,6 +186,81 @@ export default function PlanningPage() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="space-y-3 sm:hidden">
+          {days.map((d, i) => {
+            const iso = format(d, 'yyyy-MM-dd')
+            const today = isToday(d)
+            return (
+              <div
+                key={i}
+                className={`overflow-hidden rounded-2xl border bg-white ${
+                  today ? 'border-brand-300' : 'border-sand-200'
+                }`}
+              >
+                <div
+                  className={`flex items-center gap-2 border-b px-3 py-2 text-sm font-medium ${
+                    today
+                      ? 'border-brand-200 bg-brand-100 text-brand-900'
+                      : 'border-sand-200 bg-sand-50 text-brand-900'
+                  }`}
+                >
+                  <span>
+                    {DAY_LABELS[i]} <span className="font-normal text-brand-700/60">{format(d, 'd MMM', { locale: fr })}</span>
+                  </span>
+                  {today && (
+                    <span className="rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                      Aujourd&apos;hui
+                    </span>
+                  )}
+                </div>
+                <div className="divide-y divide-sand-100">
+                  {PERIODS.map((period) => {
+                    const dayShifts = shiftsFor(iso, period.key)
+                    return (
+                      <div key={period.key} className="px-3 py-2.5">
+                        <p className="mb-1.5 text-xs font-medium text-brand-700/70">
+                          {period.label}
+                        </p>
+                        <div className="space-y-1.5">
+                          {dayShifts.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {dayShifts.map((s) => (
+                                <ShiftPill
+                                  key={s.id}
+                                  shift={s}
+                                  employeeName={nameOf(s.employee_id)}
+                                  onClick={
+                                    isOwner
+                                      ? () => setEditing({ workDate: iso, period: period.key, shift: s })
+                                      : undefined
+                                  }
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {isOwner && (
+                            <button
+                              onClick={() =>
+                                setEditing({ workDate: iso, period: period.key, shift: null })
+                              }
+                              className="w-full rounded-lg border border-dashed border-sand-300 py-1.5 text-xs text-brand-700/50 hover:border-brand-300 hover:text-brand-600"
+                            >
+                              + ajouter
+                            </button>
+                          )}
+                          {!isOwner && dayShifts.length === 0 && (
+                            <p className="py-1 text-center text-xs text-brand-700/30">—</p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })}
         </div>
 
         <PosteLegend />
