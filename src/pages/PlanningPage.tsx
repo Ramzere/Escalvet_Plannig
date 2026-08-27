@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { addDays, format, startOfYear } from 'date-fns'
+import { addDays, format, isToday, startOfYear } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -111,9 +111,18 @@ export default function PlanningPage() {
                 {days.map((d, i) => (
                   <th
                     key={i}
-                    className="w-40 border-b border-l border-sand-200 bg-sand-50 px-3 py-2 text-left text-xs font-medium text-brand-900"
+                    className={`w-40 border-b border-l px-3 py-2 text-left text-xs font-medium ${
+                      isToday(d)
+                        ? 'border-brand-200 bg-brand-100 text-brand-900'
+                        : 'border-sand-200 bg-sand-50 text-brand-900'
+                    }`}
                   >
                     {DAY_LABELS[i]}
+                    {isToday(d) && (
+                      <span className="ml-1.5 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                        Aujourd&apos;hui
+                      </span>
+                    )}
                     <span className="block font-normal text-brand-700/60">
                       {format(d, 'd MMM', { locale: fr })}
                     </span>
@@ -131,7 +140,14 @@ export default function PlanningPage() {
                     const iso = format(d, 'yyyy-MM-dd')
                     const dayShifts = shiftsFor(iso, period.key)
                     return (
-                      <td key={i} className="border-b border-l border-sand-100 px-2 py-2">
+                      <td
+                        key={i}
+                        className={`border-b border-l px-2 py-2 ${
+                          isToday(d)
+                            ? 'border-sand-100 bg-brand-50/40'
+                            : 'border-sand-100'
+                        }`}
+                      >
                         <div className="space-y-1.5">
                           {dayShifts.length > 0 && (
                             <div className="flex flex-wrap gap-1.5">
