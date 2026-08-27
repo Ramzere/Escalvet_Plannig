@@ -1,13 +1,34 @@
-import { useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
+import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
-import { useContracts, useTeam } from '../hooks/usePlanningData'
+import {
+  useAbsences,
+  useContracts,
+  useOvertimeRequests,
+  useShiftsRange,
+  useTeam,
+} from '../hooks/usePlanningData'
 import { formatHours } from '../lib/hours'
 import type { Group } from '../types'
+import OvertimePendingPanel from '../components/OvertimePendingPanel'
+import PreviousYearBalance from '../components/PreviousYearBalance'
 
 export default function TeamAdminPage() {
   const { team, loading, reload } = useTeam()
   const { contracts, reload: reloadContracts } = useContracts()
+  const { absences } = useAbsences()
+  const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+
+  const previousYear = new Date().getFullYear() - 1
+  const previousYearRange = useMemo(
+    () => ({
+      from: format(new Date(previousYear, 0, 1), 'yyyy-MM-dd'),
+      to: format(new Date(previousYear, 11, 31), 'yyyy-MM-dd'),
+    }),
+    [previousYear]
+  )
+  const { shifts: previousYearShifts } = useShiftsRange(previousYearRange.from, previousYearRange.to)
 
   const selected = team.find((t) => t.id === selectedId) ?? null
   const selectedContracts = contracts
@@ -44,7 +65,19 @@ export default function TeamAdminPage() {
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+    <div className="space-y-4">
+      <OvertimePendingPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
+
+      <PreviousYearBalance
+        team={team}
+        year={previousYear}
+        shifts={previousYearShifts}
+        contracts={contracts}
+        absences={absences}
+        overtimeRequests={overtimeRequests}
+      />
+
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
       <div className="rounded-2xl border border-sand-200 bg-white p-2">
         <p className="px-2 py-2 text-xs font-medium text-brand-700/60">Équipe</p>
         {loading && <p className="px-2 py-2 text-sm text-brand-700/50">Chargement…</p>}
@@ -201,6 +234,7 @@ export default function TeamAdminPage() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   )

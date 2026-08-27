@@ -9,7 +9,7 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import type { Contract, Shift, WeeklyAbsence } from '../types'
+import type { Contract, OvertimeRequest, Shift, WeeklyAbsence } from '../types'
 
 /** Lundi de la semaine contenant `date`, au format yyyy-mm-dd. */
 export function weekStartOf(date: Date): string {
@@ -51,10 +51,30 @@ export function contractAt(contracts: Contract[], isoDate: string): Contract | n
   return applicable[0] ?? null
 }
 
+/** Durée d'une déclaration d'heures sup en heures décimales (ex: 1h30 -> 1.5). */
+export function overtimeHoursOf(o: Pick<OvertimeRequest, 'hours' | 'minutes'>): number {
+  return o.hours + o.minutes / 60
+}
+
+/** Total des heures sup approuvées d'un employé pour une semaine donnée. */
+export function approvedOvertimeForWeek(
+  overtimeRequests: OvertimeRequest[],
+  employeeId: string,
+  weekStartIso: string
+): number {
+  const days = weekDays(weekStartIso).map((d) => format(d, 'yyyy-MM-dd'))
+  return overtimeRequests
+    .filter(
+      (o) => o.employee_id === employeeId && o.status === 'approved' && days.includes(o.work_date)
+    )
+    .reduce((sum, o) => sum + overtimeHoursOf(o), 0)
+}
+
 export interface WeekTotals {
   weekStart: string
   actualHours: number
   theoreticalHours: number
+  approvedOvertime: number
   delta: number
   isAbsentWeek: boolean
 }
@@ -80,7 +100,8 @@ export function weekTotals(
   weekStartIso: string,
   shifts: Shift[],
   contracts: Contract[],
-  absences: WeeklyAbsence[]
+  absences: WeeklyAbsence[],
+  overtimeRequests: OvertimeRequest[] = []
 ): WeekTotals {
   const isAbsentWeek = absences.some(
     (a) => a.employee_id === employeeId && a.week_start === weekStartIso
@@ -88,11 +109,13 @@ export function weekTotals(
   const actualHours = actualHoursForWeek(shifts, employeeId, weekStartIso)
   const contract = contractAt(contracts, weekStartIso)
   const theoreticalHours = isAbsentWeek ? 0 : contract?.weekly_hours ?? 0
+  const approvedOvertime = approvedOvertimeForWeek(overtimeRequests, employeeId, weekStartIso)
   return {
     weekStart: weekStartIso,
     actualHours,
     theoreticalHours,
-    delta: actualHours - theoreticalHours,
+    approvedOvertime,
+    delta: actualHours - theoreticalHours + approvedOvertime,
     isAbsentWeek,
   }
 }
@@ -115,7 +138,8 @@ export function projectedBalance(
   targetWeekStartIso: string,
   shifts: Shift[],
   contracts: Contract[],
-  absences: WeeklyAbsence[]
+  absences: WeeklyAbsence[],
+  overtimeRequests: OvertimeRequest[] = []
 ): ProjectedBalance {
   const targetDate = parseISO(targetWeekStartIso)
   const yearStart = startOfYear(targetDate)
@@ -126,7 +150,7 @@ export function projectedBalance(
 
   while (!isAfter(cursor, targetDate)) {
     const iso = format(cursor, 'yyyy-MM-dd')
-    const totals = weekTotals(employeeId, iso, shifts, contracts, absences)
+    const totals = weekTotals(employeeId, iso, shifts, contracts, absences, overtimeRequests)
     weeks.push(totals)
     cumulativeDelta += totals.delta
     cursor = addWeeks(cursor, 1)

@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react'
 import { addDays, format, startOfYear } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
-import { useAbsences, useContracts, useShiftsRange, useTeam } from '../hooks/usePlanningData'
+import {
+  useAbsences,
+  useContracts,
+  useOvertimeRequests,
+  useShiftsRange,
+  useTeam,
+} from '../hooks/usePlanningData'
 import { weekDays, weekStartOf } from '../lib/hours'
 import type { Group, Period, Shift } from '../types'
 import WeekNavigator from '../components/WeekNavigator'
@@ -10,6 +16,7 @@ import ShiftPill from '../components/ShiftPill'
 import ShiftEditorModal from '../components/ShiftEditorModal'
 import HoursSummary from '../components/HoursSummary'
 import AbsenceBar from '../components/AbsenceBar'
+import OvertimeForm from '../components/OvertimeForm'
 
 const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const PERIODS: { key: Period; label: string }[] = [
@@ -35,6 +42,7 @@ export default function PlanningPage() {
   const { contracts } = useContracts()
   const { absences, reload: reloadAbsences } = useAbsences()
   const { shifts: yearShifts, reload: reloadShifts } = useShiftsRange(rangeFrom, rangeTo)
+  const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
 
   const visibleTeam = useMemo(
     () => team.filter((t) => t.active && t.group_name === groupFilter),
@@ -170,7 +178,17 @@ export default function PlanningPage() {
           yearShifts={yearShifts}
           contracts={contracts}
           absences={absences}
+          overtimeRequests={overtimeRequests}
         />
+
+        {!isOwner && profile && (
+          <OvertimeForm
+            employeeId={profile.id}
+            weekStart={weekStart}
+            requests={overtimeRequests}
+            onChanged={reloadOvertime}
+          />
+        )}
       </div>
 
       {teamLoading && <p className="text-sm text-brand-700/50">Chargement de l&apos;équipe…</p>}

@@ -81,6 +81,32 @@ create table if not exists public.weekly_absences (
 
 comment on table public.weekly_absences is 'Semaines entières exclues du calcul du solde d''heures (vacances, arrêt...).';
 
+-- ----------------------------------------------------------------------------
+-- 5. OVERTIME_REQUESTS
+-- Déclaration d'heures supplémentaires par un employé pour un jour donné.
+-- Reste "pending" tant que le propriétaire ne l'a pas validée ; seules les
+-- déclarations "approved" sont comptées dans le solde hebdo/annuel.
+-- ----------------------------------------------------------------------------
+create table if not exists public.overtime_requests (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.profiles (id) on delete cascade,
+  work_date date not null,
+  hours integer not null default 0 check (hours >= 0),
+  minutes integer not null default 0 check (minutes >= 0 and minutes < 60),
+  note text,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  admin_note text,
+  decided_by uuid references public.profiles (id),
+  decided_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint overtime_requests_nonzero check (hours > 0 or minutes > 0)
+);
+
+create index if not exists overtime_requests_employee_idx on public.overtime_requests (employee_id, work_date);
+create index if not exists overtime_requests_status_idx on public.overtime_requests (status);
+
+comment on table public.overtime_requests is 'Heures sup déclarées par un employé pour un jour donné, à valider par le propriétaire.';
+
 -- ============================================================================
 -- FONCTIONS UTILITAIRES (security definer pour éviter la récursion RLS)
 -- ============================================================================
@@ -137,6 +163,7 @@ alter table public.profiles enable row level security;
 alter table public.contracts enable row level security;
 alter table public.shifts enable row level security;
 alter table public.weekly_absences enable row level security;
+alter table public.overtime_requests enable row level security;
 
 -- ---- profiles ----
 drop policy if exists "profiles_select" on public.profiles;
@@ -202,6 +229,37 @@ create policy "weekly_absences_select" on public.weekly_absences
 
 drop policy if exists "weekly_absences_owner_write" on public.weekly_absences;
 create policy "weekly_absences_owner_write" on public.weekly_absences
+  for all
+  using (is_owner())
+  with check (is_owner());
+
+-- ---- overtime_requests ----
+drop policy if exists "overtime_requests_select" on public.overtime_requests;
+create policy "overtime_requests_select" on public.overtime_requests
+  for select
+  using (is_owner() or employee_id = auth.uid());
+
+drop policy if exists "overtime_requests_insert" on public.overtime_requests;
+create policy "overtime_requests_insert" on public.overtime_requests
+  for insert
+  with check (employee_id = auth.uid());
+
+-- L'employé peut modifier/supprimer sa propre déclaration tant qu'elle n'est
+-- pas encore validée. Une fois "approved"/"rejected", seul le propriétaire
+-- peut la modifier (validation, motif de refus...).
+drop policy if exists "overtime_requests_own_update" on public.overtime_requests;
+create policy "overtime_requests_own_update" on public.overtime_requests
+  for update
+  using (employee_id = auth.uid() and status = 'pending')
+  with check (employee_id = auth.uid() and status = 'pending');
+
+drop policy if exists "overtime_requests_own_delete" on public.overtime_requests;
+create policy "overtime_requests_own_delete" on public.overtime_requests
+  for delete
+  using (employee_id = auth.uid() and status = 'pending');
+
+drop policy if exists "overtime_requests_owner_write" on public.overtime_requests;
+create policy "overtime_requests_owner_write" on public.overtime_requests
   for all
   using (is_owner())
   with check (is_owner());

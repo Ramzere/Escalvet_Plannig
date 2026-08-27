@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Contract, Profile, Shift, WeeklyAbsence } from '../types'
+import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
 
 export function useTeam() {
   const [team, setTeam] = useState<Profile[]>([])
@@ -62,6 +62,33 @@ export function useAbsences() {
   }, [reload])
 
   return { absences, loading, reload }
+}
+
+/**
+ * Charge les déclarations d'heures sup. La RLS limite déjà les employés à
+ * leurs propres déclarations ; le propriétaire voit celles de toute l'équipe.
+ */
+export function useOvertimeRequests() {
+  const [requests, setRequests] = useState<OvertimeRequest[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('overtime_requests')
+      .select(
+        'id, employee_id, work_date, hours, minutes, note, status, admin_note, created_at'
+      )
+      .order('work_date', { ascending: false })
+    if (!error) setRequests((data as OvertimeRequest[]) ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    reload()
+  }, [reload])
+
+  return { requests, loading, reload }
 }
 
 /** Charge les créneaux entre deux dates ISO (bornes incluses). */

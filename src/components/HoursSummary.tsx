@@ -1,4 +1,4 @@
-import type { Contract, Profile, Shift, WeeklyAbsence } from '../types'
+import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
 import { formatHours, projectedBalance, weekTotals } from '../lib/hours'
 
 function DeltaBadge({ delta }: { delta: number }) {
@@ -29,6 +29,7 @@ export default function HoursSummary({
   yearShifts,
   contracts,
   absences,
+  overtimeRequests,
 }: {
   team: Profile[]
   weekStart: string
@@ -36,6 +37,7 @@ export default function HoursSummary({
   yearShifts: Shift[]
   contracts: Contract[]
   absences: WeeklyAbsence[]
+  overtimeRequests: OvertimeRequest[]
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-sand-200 bg-white">
@@ -47,8 +49,15 @@ export default function HoursSummary({
       </div>
       <div className="grid gap-px bg-sand-100 sm:grid-cols-2 lg:grid-cols-4">
         {team.map((member) => {
-          const wt = weekTotals(member.id, weekStart, shifts, contracts, absences)
-          const projection = projectedBalance(member.id, weekStart, yearShifts, contracts, absences)
+          const wt = weekTotals(member.id, weekStart, shifts, contracts, absences, overtimeRequests)
+          const projection = projectedBalance(
+            member.id,
+            weekStart,
+            yearShifts,
+            contracts,
+            absences,
+            overtimeRequests
+          )
           return (
             <div key={member.id} className="flex flex-col gap-1 bg-white px-4 py-3">
               <p className="text-sm font-medium text-brand-900">{member.full_name}</p>

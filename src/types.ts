@@ -36,6 +36,20 @@ export interface WeeklyAbsence {
   reason: string
 }
 
+export type OvertimeStatus = 'pending' | 'approved' | 'rejected'
+
+export interface OvertimeRequest {
+  id: string
+  employee_id: string
+  work_date: string // ISO date (yyyy-mm-dd)
+  hours: number
+  minutes: number
+  note?: string | null
+  status: OvertimeStatus
+  admin_note?: string | null
+  created_at: string
+}
+
 export const POSTE_LABELS: Record<Poste, string> = {
   bleu: 'Chenil / chirurgie / examens complémentaires / nettoyage chirurgie',
   violet: 'Accueil / rangement / nettoyage et stock des salles (hors chirurgie)',

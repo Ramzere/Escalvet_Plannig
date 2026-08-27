@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formatHours, shiftHours, weekTotals } from './hours'
-import type { Contract, Shift } from '../types'
+import type { Contract, OvertimeRequest, Shift } from '../types'
 
 // Données reprises telles quelles du planning papier fourni :
 // semaine du 3/08/2026 au 8/08/2026, CLARA = 45H30 soit 10H30 de plus (contrat 35h).
@@ -53,5 +53,41 @@ describe('weekTotals — comparaison avec le planning papier réel', () => {
     expect(formatHours(totals.actualHours)).toBe('46h30')
     expect(totals.theoreticalHours).toBe(35)
     expect(formatHours(totals.delta)).toBe('11h30')
+  })
+})
+
+describe('weekTotals — heures sup', () => {
+  const overtime: OvertimeRequest[] = [
+    {
+      id: 'o1',
+      employee_id: 'clara',
+      work_date: '2026-08-04',
+      hours: 1,
+      minutes: 30,
+      status: 'approved',
+      created_at: '2026-08-04T00:00:00Z',
+    },
+    {
+      id: 'o2',
+      employee_id: 'clara',
+      work_date: '2026-08-05',
+      hours: 2,
+      minutes: 0,
+      status: 'pending',
+      created_at: '2026-08-05T00:00:00Z',
+    },
+  ]
+
+  it('ajoute au solde uniquement les heures sup approuvées de la semaine', () => {
+    const totals = weekTotals('clara', '2026-08-03', claraShifts, claraContract, [], overtime)
+    expect(totals.approvedOvertime).toBeCloseTo(1.5, 5)
+    expect(formatHours(totals.delta)).toBe('13h')
+  })
+
+  it("ignore les heures sup en attente ou d'un autre employé", () => {
+    const totals = weekTotals('clara', '2026-08-03', claraShifts, claraContract, [], [
+      { ...overtime[1], employee_id: 'other' },
+    ])
+    expect(totals.approvedOvertime).toBe(0)
   })
 })
