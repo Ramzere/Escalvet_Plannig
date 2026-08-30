@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Absence, Profile } from '../types'
 import { weekDays } from '../lib/hours'
@@ -22,6 +22,8 @@ export default function AbsenceBar({
   const [editing, setEditing] = useState<Absence | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const startDateRef = useRef<HTMLInputElement>(null)
+  const endDateRef = useRef<HTMLInputElement>(null)
 
   const weekDatesIso = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
   const teamIds = new Set(team.map((t) => t.id))
@@ -80,6 +82,11 @@ export default function AbsenceBar({
   function closeForm() {
     setFormOpen(false)
     setEditing(null)
+  }
+
+  function fillWholeWeek() {
+    if (startDateRef.current) startDateRef.current.value = weekDatesIso[0]
+    if (endDateRef.current) endDateRef.current.value = weekDatesIso[weekDatesIso.length - 1]
   }
 
   async function deleteAbsence(id: string) {
@@ -149,6 +156,7 @@ export default function AbsenceBar({
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-900">Du</label>
             <input
+              ref={startDateRef}
               name="start_date"
               type="date"
               required
@@ -159,6 +167,7 @@ export default function AbsenceBar({
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-900">Au</label>
             <input
+              ref={endDateRef}
               name="end_date"
               type="date"
               required
@@ -166,6 +175,13 @@ export default function AbsenceBar({
               className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
+          <button
+            type="button"
+            onClick={fillWholeWeek}
+            className="rounded-lg border border-sand-300 bg-white px-3 py-1.5 text-sm text-brand-700/80 hover:bg-sand-50"
+          >
+            Semaine entière
+          </button>
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-900">Motif</label>
             <input
