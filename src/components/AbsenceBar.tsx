@@ -18,8 +18,14 @@ export default function AbsenceBar({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const absentIds = new Set(
-    absences.filter((a) => a.week_start === weekStart).map((a) => a.employee_id)
+
+  const weekDatesIso = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
+  const teamIds = new Set(team.map((t) => t.id))
+  const weekAbsences = absences.filter(
+    (a) =>
+      teamIds.has(a.employee_id) &&
+      a.start_date <= weekDatesIso[weekDatesIso.length - 1] &&
+      a.end_date >= weekDatesIso[0]
   )
 
   if (!isOwner && absentIds.size === 0) return null
