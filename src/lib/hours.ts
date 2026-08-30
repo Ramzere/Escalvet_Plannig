@@ -9,7 +9,10 @@ import {
   startOfWeek,
   startOfYear,
 } from 'date-fns'
-import type { Contract, OvertimeRequest, Shift, WeeklyAbsence } from '../types'
+import type { Absence, Contract, OvertimeRequest, Shift } from '../types'
+
+/** Nombre de jours travaillés dans la semaine type du cabinet (lundi -> samedi). */
+export const WORK_DAYS_PER_WEEK = 6
 
 /** Lundi de la semaine contenant `date`, au format yyyy-mm-dd. */
 export function weekStartOf(date: Date): string {
@@ -18,7 +21,7 @@ export function weekStartOf(date: Date): string {
 
 export function weekDays(weekStartIso: string): Date[] {
   const start = parseISO(weekStartIso)
-  return Array.from({ length: 6 }, (_, i) => addDays(start, i)) // lundi -> samedi
+  return Array.from({ length: WORK_DAYS_PER_WEEK }, (_, i) => addDays(start, i)) // lundi -> samedi
 }
 
 /** Durée d'un créneau en heures décimales (ex: 4h15 -> 4.25). */
@@ -42,13 +45,29 @@ export function formatHours(hours: number): string {
   return `${sign}${h}h${String(m).padStart(2, '0')}`
 }
 
-/** Le contrat en vigueur à une date donnée (le plus récent dont effective_from <= date). */
+/** Le contrat en vigueur à une date donnée (effective_from <= date <= effective_to, s'il y en a un). */
 export function contractAt(contracts: Contract[], isoDate: string): Contract | null {
   const target = parseISO(isoDate)
   const applicable = contracts
-    .filter((c) => !isAfter(parseISO(c.effective_from), target))
+    .filter(
+      (c) =>
+        !isAfter(parseISO(c.effective_from), target) &&
+        (!c.effective_to || !isAfter(target, parseISO(c.effective_to)))
+    )
     .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))
   return applicable[0] ?? null
+}
+
+/** Nombre de jours de la semaine (parmi les jours travaillés lundi -> samedi) couverts par une absence. */
+export function absentDaysInWeek(
+  absences: Absence[],
+  employeeId: string,
+  weekStartIso: string
+): number {
+  const days = weekDays(weekStartIso).map((d) => format(d, 'yyyy-MM-dd'))
+  const employeeAbsences = absences.filter((a) => a.employee_id === employeeId)
+  return days.filter((day) => employeeAbsences.some((a) => a.start_date <= day && day <= a.end_date))
+    .length
 }
 
 /** Durée d'une déclaration d'heures sup en heures décimales (ex: 1h30 -> 1.5). */
@@ -77,6 +96,7 @@ export interface WeekTotals {
   approvedOvertime: number
   delta: number
   isAbsentWeek: boolean
+  absentDays: number
 }
 
 /** Total réel travaillé sur la semaine par un employé. */
@@ -93,22 +113,24 @@ export function actualHoursForWeek(
 
 /**
  * Calcule le solde d'heures d'un employé pour une semaine donnée, en tenant
- * compte du contrat en vigueur et des semaines d'absence (exclues du calcul).
+ * compte du contrat en vigueur et des jours d'absence (les heures théoriques
+ * sont réduites au prorata des jours d'absence dans la semaine).
  */
 export function weekTotals(
   employeeId: string,
   weekStartIso: string,
   shifts: Shift[],
   contracts: Contract[],
-  absences: WeeklyAbsence[],
+  absences: Absence[],
   overtimeRequests: OvertimeRequest[] = []
 ): WeekTotals {
-  const isAbsentWeek = absences.some(
-    (a) => a.employee_id === employeeId && a.week_start === weekStartIso
-  )
+  const absentDays = Math.min(WORK_DAYS_PER_WEEK, absentDaysInWeek(absences, employeeId, weekStartIso))
+  const isAbsentWeek = absentDays >= WORK_DAYS_PER_WEEK
   const actualHours = actualHoursForWeek(shifts, employeeId, weekStartIso)
   const contract = contractAt(contracts, weekStartIso)
-  const theoreticalHours = isAbsentWeek ? 0 : contract?.weekly_hours ?? 0
+  const fullWeeklyHours = contract?.weekly_hours ?? 0
+  const theoreticalHours =
+    (fullWeeklyHours * (WORK_DAYS_PER_WEEK - absentDays)) / WORK_DAYS_PER_WEEK
   const approvedOvertime = approvedOvertimeForWeek(overtimeRequests, employeeId, weekStartIso)
   return {
     weekStart: weekStartIso,
@@ -117,6 +139,7 @@ export function weekTotals(
     approvedOvertime,
     delta: actualHours - theoreticalHours + approvedOvertime,
     isAbsentWeek,
+    absentDays,
   }
 }
 
@@ -131,14 +154,16 @@ export interface ProjectedBalance {
  * Solde prévisionnel cumulé depuis le 1er janvier de l'année de la semaine
  * ciblée, jusqu'à (et y compris) cette semaine — fonctionne aussi pour une
  * semaine future : c'est un calcul prévisionnel basé sur ce qui est déjà
- * planifié.
+ * planifié. Le cumul redémarre à zéro à chaque changement de contrat (ex :
+ * début d'un CDD en cours d'année, ou passage CDD -> CDI), en plus du
+ * redémarrage annuel au 1er janvier.
  */
 export function projectedBalance(
   employeeId: string,
   targetWeekStartIso: string,
   shifts: Shift[],
   contracts: Contract[],
-  absences: WeeklyAbsence[],
+  absences: Absence[],
   overtimeRequests: OvertimeRequest[] = []
 ): ProjectedBalance {
   const targetDate = parseISO(targetWeekStartIso)
@@ -147,12 +172,18 @@ export function projectedBalance(
 
   const weeks: WeekTotals[] = []
   let cumulativeDelta = 0
+  let currentContractId: string | null = null
 
   while (!isAfter(cursor, targetDate)) {
     const iso = format(cursor, 'yyyy-MM-dd')
+    const contract = contractAt(contracts, iso)
+    if (contract && contract.id !== currentContractId) {
+      currentContractId = contract.id
+      cumulativeDelta = 0
+    }
     const totals = weekTotals(employeeId, iso, shifts, contracts, absences, overtimeRequests)
     weeks.push(totals)
-    cumulativeDelta += totals.delta
+    if (contract) cumulativeDelta += totals.delta
     cursor = addWeeks(cursor, 1)
   }
 

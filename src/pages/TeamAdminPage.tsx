@@ -9,7 +9,8 @@ import {
   useTeam,
 } from '../hooks/usePlanningData'
 import { formatHours } from '../lib/hours'
-import type { Group } from '../types'
+import { CONTRACT_TYPES } from '../types'
+import type { ContractType, Group } from '../types'
 import ErrorBanner from '../components/ErrorBanner'
 import OvertimePendingPanel from '../components/OvertimePendingPanel'
 import OvertimeHistoryPanel from '../components/OvertimeHistoryPanel'
@@ -24,6 +25,7 @@ export default function TeamAdminPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [contractError, setContractError] = useState<string | null>(null)
+  const [newContractType, setNewContractType] = useState<ContractType>('CDI')
 
   const previousYear = new Date().getFullYear() - 1
   const previousYearRange = useMemo(
@@ -58,12 +60,20 @@ export default function TeamAdminPage() {
     const form = new FormData(e.currentTarget)
     const weekly_hours = Number(form.get('weekly_hours'))
     const effective_from = String(form.get('effective_from'))
+    const contract_type = String(form.get('contract_type') || 'CDI') as ContractType
+    const effective_to_raw = String(form.get('effective_to') || '')
     const label = String(form.get('label') || 'Contrat')
     if (!weekly_hours || !effective_from) return
+    if (contract_type !== 'CDI' && !effective_to_raw) {
+      setContractError('Une date de fin est obligatoire pour un CDD, une alternance ou un stage.')
+      return
+    }
     const { error } = await supabase.from('contracts').insert({
       employee_id: selectedId,
       weekly_hours,
       effective_from,
+      effective_to: contract_type === 'CDI' ? null : effective_to_raw,
+      contract_type,
       label,
     })
     if (error) {
@@ -71,6 +81,7 @@ export default function TeamAdminPage() {
       return
     }
     ;(e.target as HTMLFormElement).reset()
+    setNewContractType('CDI')
     reloadContracts()
   }
 
@@ -206,6 +217,21 @@ export default function TeamAdminPage() {
                   />
                 </div>
                 <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">Type</label>
+                  <select
+                    name="contract_type"
+                    value={newContractType}
+                    onChange={(e) => setNewContractType(e.target.value as ContractType)}
+                    className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+                  >
+                    {CONTRACT_TYPES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
                   <label className="mb-1 block text-xs font-medium text-brand-900">
                     Heures / semaine
                   </label>
@@ -220,13 +246,25 @@ export default function TeamAdminPage() {
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-brand-900">
-                    Valable à partir du
+                    Date de début
                   </label>
                   <input
                     name="effective_from"
                     type="date"
                     required
                     className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-brand-900">
+                    Date de fin
+                  </label>
+                  <input
+                    name="effective_to"
+                    type="date"
+                    required={newContractType !== 'CDI'}
+                    disabled={newContractType === 'CDI'}
+                    className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400 disabled:cursor-not-allowed disabled:opacity-50"
                   />
                 </div>
                 <button
@@ -241,10 +279,15 @@ export default function TeamAdminPage() {
                 {selectedContracts.map((c) => (
                   <div key={c.id} className="flex items-center justify-between py-2 text-sm">
                     <div>
-                      <p className="font-medium text-brand-900">{c.label}</p>
+                      <p className="font-medium text-brand-900">
+                        {c.label} <span className="text-xs font-normal text-brand-700/50">· {c.contract_type}</span>
+                      </p>
                       <p className="text-xs text-brand-700/60">
-                        {formatHours(c.weekly_hours)} / semaine · à partir du{' '}
+                        {formatHours(c.weekly_hours)} / semaine · du{' '}
                         {new Date(c.effective_from).toLocaleDateString('fr-FR')}
+                        {c.effective_to
+                          ? ` au ${new Date(c.effective_to).toLocaleDateString('fr-FR')}`
+                          : ' (sans fin)'}
                       </p>
                     </div>
                     <button

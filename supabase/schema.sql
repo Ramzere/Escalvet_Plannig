@@ -23,27 +23,52 @@ comment on table public.profiles is 'Un profil par membre de l''équipe. Créé 
 
 -- ----------------------------------------------------------------------------
 -- 2. CONTRACTS
--- Historique des contrats par employé : nombre d'heures théoriques par
--- semaine, valable à partir d'une date donnée (permet de gérer un changement
--- de contrat en cours d'année).
+-- Historique des contrats par employé : type (CDI/CDD/Alternance/Stage),
+-- nombre d'heures théoriques par semaine, valable à partir d'une date donnée
+-- (permet de gérer un changement de contrat en cours d'année) et jusqu'à une
+-- date de fin (obligatoire sauf pour un CDI, qui n'en a pas).
 -- ----------------------------------------------------------------------------
 create table if not exists public.contracts (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references public.profiles (id) on delete cascade,
   label text not null default 'Contrat',
+  contract_type text not null default 'CDI',
   weekly_hours numeric(5, 2) not null check (weekly_hours >= 0),
   effective_from date not null,
+  effective_to date,
   created_at timestamptz not null default now()
 );
 
+-- Colonnes ajoutées après la création initiale de la table (sans effet si
+-- déjà présentes, pour pouvoir rejouer ce fichier sur une base existante).
+alter table public.contracts add column if not exists contract_type text not null default 'CDI';
+alter table public.contracts add column if not exists effective_to date;
+
+alter table public.contracts drop constraint if exists contracts_type_check;
+alter table public.contracts add constraint contracts_type_check
+  check (contract_type in ('CDI', 'CDD', 'Alternance', 'Stage'));
+
+alter table public.contracts drop constraint if exists contracts_end_after_start;
+alter table public.contracts add constraint contracts_end_after_start
+  check (effective_to is null or effective_to >= effective_from);
+
+alter table public.contracts drop constraint if exists contracts_cdi_no_end;
+alter table public.contracts add constraint contracts_cdi_no_end
+  check (contract_type <> 'CDI' or effective_to is null);
+
+alter table public.contracts drop constraint if exists contracts_noncdi_has_end;
+alter table public.contracts add constraint contracts_noncdi_has_end
+  check (contract_type = 'CDI' or effective_to is not null);
+
 create index if not exists contracts_employee_idx on public.contracts (employee_id, effective_from);
 
-comment on table public.contracts is 'Historique des contrats (heures théoriques hebdomadaires) par employé.';
+comment on table public.contracts is 'Historique des contrats (type, heures théoriques hebdomadaires, période) par employé.';
 
 -- ----------------------------------------------------------------------------
 -- 3. SHIFTS
 -- Un créneau = une personne, un jour, une demi-journée (matin/après-midi),
--- avec ses horaires précis et son poste (couleur).
+-- avec ses horaires précis et son poste (couleur). Le poste est optionnel :
+-- les vétérinaires n'ont pas de poste, seulement des horaires.
 -- ----------------------------------------------------------------------------
 create table if not exists public.shifts (
   id uuid primary key default gen_random_uuid(),
@@ -52,7 +77,7 @@ create table if not exists public.shifts (
   period text not null check (period in ('matin', 'apres-midi')),
   start_time time not null,
   end_time time not null,
-  poste text not null check (poste in ('bleu', 'violet', 'vert', 'seul')),
+  poste text,
   note text,
   created_by uuid references public.profiles (id),
   created_at timestamptz not null default now(),
@@ -60,26 +85,48 @@ create table if not exists public.shifts (
   constraint shifts_time_order check (end_time > start_time)
 );
 
+-- Rend le poste optionnel (sans effet si déjà nullable).
+alter table public.shifts alter column poste drop not null;
+alter table public.shifts drop constraint if exists shifts_poste_check;
+alter table public.shifts add constraint shifts_poste_check
+  check (poste is null or poste in ('bleu', 'violet', 'vert', 'seul'));
+
 create index if not exists shifts_date_idx on public.shifts (work_date);
 create index if not exists shifts_employee_idx on public.shifts (employee_id, work_date);
 
-comment on table public.shifts is 'Créneaux de travail individuels (matin ou après-midi) avec poste coloré.';
+comment on table public.shifts is 'Créneaux de travail individuels (matin ou après-midi) avec poste coloré (optionnel, absent pour les vétérinaires).';
 
 -- ----------------------------------------------------------------------------
--- 4. WEEKLY_ABSENCES
--- Marque une semaine entière comme non décomptée pour un employé
--- (vacances, arrêt...) : la semaine est exclue du calcul du solde d'heures.
+-- 4. ABSENCES
+-- Marque une période (date à date, congés/repos/arrêt...) comme non
+-- décomptée pour un employé : les jours concernés sont exclus, au prorata,
+-- du calcul du solde d'heures hebdomadaire.
 -- ----------------------------------------------------------------------------
-create table if not exists public.weekly_absences (
+create table if not exists public.absences (
   id uuid primary key default gen_random_uuid(),
   employee_id uuid not null references public.profiles (id) on delete cascade,
-  week_start date not null, -- toujours un lundi
-  reason text not null default 'Vacances',
+  start_date date not null,
+  end_date date not null,
+  reason text not null default 'Congés',
   created_at timestamptz not null default now(),
-  unique (employee_id, week_start)
+  constraint absences_end_after_start check (end_date >= start_date)
 );
 
-comment on table public.weekly_absences is 'Semaines entières exclues du calcul du solde d''heures (vacances, arrêt...).';
+create index if not exists absences_employee_idx on public.absences (employee_id, start_date);
+
+comment on table public.absences is 'Périodes (date à date) exclues, au prorata des jours, du calcul du solde d''heures.';
+
+-- Migration depuis l'ancienne table weekly_absences (semaines entières) :
+-- reprend chaque semaine marquée comme une période lundi -> samedi, puis
+-- supprime l'ancienne table. Sans effet si weekly_absences n'existe plus.
+do $$
+begin
+  if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = 'weekly_absences') then
+    insert into public.absences (employee_id, start_date, end_date, reason)
+    select employee_id, week_start, week_start + 5, reason from public.weekly_absences;
+    drop table public.weekly_absences;
+  end if;
+end $$;
 
 -- ----------------------------------------------------------------------------
 -- 5. OVERTIME_REQUESTS
@@ -162,7 +209,7 @@ create trigger on_auth_user_created
 alter table public.profiles enable row level security;
 alter table public.contracts enable row level security;
 alter table public.shifts enable row level security;
-alter table public.weekly_absences enable row level security;
+alter table public.absences enable row level security;
 alter table public.overtime_requests enable row level security;
 
 -- ---- profiles ----
@@ -218,17 +265,17 @@ create policy "shifts_owner_write" on public.shifts
   using (is_owner())
   with check (is_owner());
 
--- ---- weekly_absences ----
-drop policy if exists "weekly_absences_select" on public.weekly_absences;
-create policy "weekly_absences_select" on public.weekly_absences
+-- ---- absences ----
+drop policy if exists "absences_select" on public.absences;
+create policy "absences_select" on public.absences
   for select
   using (
     is_owner()
     or employee_id in (select id from public.profiles where group_name = my_group())
   );
 
-drop policy if exists "weekly_absences_owner_write" on public.weekly_absences;
-create policy "weekly_absences_owner_write" on public.weekly_absences
+drop policy if exists "absences_owner_write" on public.absences;
+create policy "absences_owner_write" on public.absences
   for all
   using (is_owner())
   with check (is_owner());
@@ -275,7 +322,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles', 'contracts', 'shifts', 'weekly_absences', 'overtime_requests']
+  foreach t in array array['profiles', 'contracts', 'shifts', 'absences', 'overtime_requests']
   loop
     if not exists (
       select 1 from pg_publication_tables

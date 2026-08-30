@@ -1,4 +1,4 @@
-import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
+import type { Absence, Contract, OvertimeRequest, Profile, Shift } from '../types'
 import { formatHours, projectedBalance, weekTotals } from '../lib/hours'
 
 function DeltaBadge({ delta }: { delta: number }) {
@@ -36,7 +36,7 @@ export default function HoursSummary({
   shifts: Shift[]
   yearShifts: Shift[]
   contracts: Contract[]
-  absences: WeeklyAbsence[]
+  absences: Absence[]
   overtimeRequests: OvertimeRequest[]
 }) {
   return (
@@ -65,6 +65,7 @@ export default function HoursSummary({
                 {wt.isAbsentWeek
                   ? 'Absent(e) cette semaine'
                   : `${formatHours(wt.actualHours)} sur ${formatHours(wt.theoreticalHours)} prévues`}
+                {!wt.isAbsentWeek && wt.absentDays > 0 && ` (${wt.absentDays}j d'absence)`}
               </p>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <DeltaBadge delta={wt.delta} />

@@ -263,7 +263,7 @@ export default function PlanningPage() {
           })}
         </div>
 
-        <PosteLegend />
+        {groupFilter === 'asv' && <PosteLegend />}
 
         <HoursSummary
           team={visibleTeam}

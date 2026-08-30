@@ -9,6 +9,8 @@ const POSTE_STYLES: Record<string, string> = {
   seul: 'bg-poste-seul-bg text-poste-seul border-poste-seul/30',
 }
 
+const NEUTRAL_STYLE = 'bg-sand-100 text-brand-700 border-sand-300'
+
 export default function ShiftPill({
   shift,
   employeeName,
@@ -25,9 +27,9 @@ export default function ShiftPill({
       onClick={onClick}
       disabled={!onClick}
       className={`min-w-[70px] flex-1 rounded-lg border px-1.5 py-1.5 text-left text-xs leading-snug transition ${
-        POSTE_STYLES[shift.poste]
+        shift.poste ? POSTE_STYLES[shift.poste] : NEUTRAL_STYLE
       } ${onClick ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
-      title={POSTE_SHORT_LABELS[shift.poste]}
+      title={shift.poste ? POSTE_SHORT_LABELS[shift.poste] : undefined}
     >
       <p className="font-semibold">{employeeName}</p>
       <p className="opacity-80">
