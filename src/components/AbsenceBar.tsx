@@ -23,8 +23,12 @@ export default function AbsenceBar({
   const [error, setError] = useState<string | null>(null)
 
   const weekDatesIso = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
+  const teamIds = new Set(team.map((t) => t.id))
   const weekAbsences = absences.filter(
-    (a) => a.start_date <= weekDatesIso[weekDatesIso.length - 1] && a.end_date >= weekDatesIso[0]
+    (a) =>
+      teamIds.has(a.employee_id) &&
+      a.start_date <= weekDatesIso[weekDatesIso.length - 1] &&
+      a.end_date >= weekDatesIso[0]
   )
   const absentIds = new Set(weekAbsences.map((a) => a.employee_id))
 

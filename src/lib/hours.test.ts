@@ -123,6 +123,32 @@ describe('weekTotals — absences au prorata', () => {
   })
 })
 
+describe('weekTotals / projectedBalance — un contrat ne concerne que son employé', () => {
+  it("le contrat d'un autre employé ne change pas les heures théoriques ni le cumul de Clara", () => {
+    // Reproduit le bug remonté : ajouter un contrat pour "amandine" (démarrant
+    // après celui de Clara) ne doit avoir aucun effet sur le calcul de Clara.
+    const contractsWithOther: Contract[] = [
+      ...claraContract,
+      {
+        id: 'amandine-c1',
+        employee_id: 'amandine',
+        label: 'Temps plein',
+        contract_type: 'CDI',
+        weekly_hours: 30,
+        effective_from: '2026-07-01',
+        effective_to: null,
+      },
+    ]
+    const before = weekTotals('clara', '2026-08-03', claraShifts, claraContract, [])
+    const after = weekTotals('clara', '2026-08-03', claraShifts, contractsWithOther, [])
+    expect(after.theoreticalHours).toBe(before.theoreticalHours)
+
+    const projectionBefore = projectedBalance('clara', '2026-08-03', claraShifts, claraContract, [])
+    const projectionAfter = projectedBalance('clara', '2026-08-03', claraShifts, contractsWithOther, [])
+    expect(projectionAfter.cumulativeDelta).toBeCloseTo(projectionBefore.cumulativeDelta, 5)
+  })
+})
+
 describe('projectedBalance — redémarre au 1er janvier et à chaque changement de contrat', () => {
   it('ne cumule rien avant le début du contrat, puis redémarre à zéro sur le nouveau contrat', () => {
     const contracts: Contract[] = [

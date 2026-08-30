@@ -127,7 +127,8 @@ export function weekTotals(
   const absentDays = Math.min(WORK_DAYS_PER_WEEK, absentDaysInWeek(absences, employeeId, weekStartIso))
   const isAbsentWeek = absentDays >= WORK_DAYS_PER_WEEK
   const actualHours = actualHoursForWeek(shifts, employeeId, weekStartIso)
-  const contract = contractAt(contracts, weekStartIso)
+  const employeeContracts = contracts.filter((c) => c.employee_id === employeeId)
+  const contract = contractAt(employeeContracts, weekStartIso)
   const fullWeeklyHours = contract?.weekly_hours ?? 0
   const theoreticalHours =
     (fullWeeklyHours * (WORK_DAYS_PER_WEEK - absentDays)) / WORK_DAYS_PER_WEEK
@@ -169,6 +170,7 @@ export function projectedBalance(
   const targetDate = parseISO(targetWeekStartIso)
   const yearStart = startOfYear(targetDate)
   let cursor = startOfWeek(yearStart, { weekStartsOn: 1 })
+  const employeeContracts = contracts.filter((c) => c.employee_id === employeeId)
 
   const weeks: WeekTotals[] = []
   let cumulativeDelta = 0
@@ -176,7 +178,7 @@ export function projectedBalance(
 
   while (!isAfter(cursor, targetDate)) {
     const iso = format(cursor, 'yyyy-MM-dd')
-    const contract = contractAt(contracts, iso)
+    const contract = contractAt(employeeContracts, iso)
     if (contract && contract.id !== currentContractId) {
       currentContractId = contract.id
       cumulativeDelta = 0
