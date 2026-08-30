@@ -34,9 +34,10 @@ données existantes sont automatiquement reprises dans la nouvelle table
 avant que l'ancienne ne soit supprimée.
 
 Pour appliquer les dernières évolutions (types de contrat CDI/CDD/
-Alternance/Stage, absences date à date, poste optionnel pour les
-vétérinaires) sur un projet déjà en place : va dans **SQL Editor**, colle à
-nouveau le contenu de `supabase/schema.sql` et clique sur **Run**.
+Alternance/Stage, absences date à date avec demande/validation, poste
+optionnel pour les vétérinaires) sur un projet déjà en place : va dans **SQL
+Editor**, colle à nouveau le contenu de `supabase/schema.sql` et clique sur
+**Run**.
 
 ---
 

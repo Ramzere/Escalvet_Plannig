@@ -16,11 +16,13 @@ import OvertimePendingPanel from '../components/OvertimePendingPanel'
 import OvertimeHistoryPanel from '../components/OvertimeHistoryPanel'
 import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
 import PreviousYearBalance from '../components/PreviousYearBalance'
+import AbsencePendingPanel from '../components/AbsencePendingPanel'
+import AbsenceHistoryPanel from '../components/AbsenceHistoryPanel'
 
 export default function TeamAdminPage() {
   const { team, loading, reload } = useTeam()
   const { contracts, reload: reloadContracts } = useContracts()
-  const { absences } = useAbsences()
+  const { absences, reload: reloadAbsences } = useAbsences()
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
@@ -100,9 +102,13 @@ export default function TeamAdminPage() {
     <div className="space-y-4">
       <OvertimePendingPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
 
+      <AbsencePendingPanel team={team} requests={absences} onChanged={reloadAbsences} />
+
       <OvertimeYearlySummary team={team} requests={overtimeRequests} />
 
       <OvertimeHistoryPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
+
+      <AbsenceHistoryPanel team={team} requests={absences} onChanged={reloadAbsences} />
 
       <PreviousYearBalance
         team={team}

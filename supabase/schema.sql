@@ -100,7 +100,10 @@ comment on table public.shifts is 'Créneaux de travail individuels (matin ou ap
 -- 4. ABSENCES
 -- Marque une période (date à date, congés/repos/arrêt...) comme non
 -- décomptée pour un employé : les jours concernés sont exclus, au prorata,
--- du calcul du solde d'heures hebdomadaire.
+-- du calcul du solde d'heures hebdomadaire. Le propriétaire peut en créer
+-- directement (déjà "approved"), ou un·e employé·e peut en demander une
+-- ("pending"), à valider par le propriétaire — comme pour les heures sup.
+-- Seules les absences "approved" comptent dans le calcul du solde.
 -- ----------------------------------------------------------------------------
 create table if not exists public.absences (
   id uuid primary key default gen_random_uuid(),
@@ -108,13 +111,29 @@ create table if not exists public.absences (
   start_date date not null,
   end_date date not null,
   reason text not null default 'Congés',
+  status text not null default 'approved',
+  decided_by uuid references public.profiles (id),
+  decided_at timestamptz,
   created_at timestamptz not null default now(),
   constraint absences_end_after_start check (end_date >= start_date)
 );
 
-create index if not exists absences_employee_idx on public.absences (employee_id, start_date);
+-- Colonnes ajoutées après la création initiale de la table (sans effet si
+-- déjà présentes, pour pouvoir rejouer ce fichier sur une base existante).
+-- Les absences déjà en place (créées avant l'ajout du statut) sont
+-- considérées "approved" grâce à la valeur par défaut.
+alter table public.absences add column if not exists status text not null default 'approved';
+alter table public.absences add column if not exists decided_by uuid references public.profiles (id);
+alter table public.absences add column if not exists decided_at timestamptz;
 
-comment on table public.absences is 'Périodes (date à date) exclues, au prorata des jours, du calcul du solde d''heures.';
+alter table public.absences drop constraint if exists absences_status_check;
+alter table public.absences add constraint absences_status_check
+  check (status in ('pending', 'approved', 'rejected'));
+
+create index if not exists absences_employee_idx on public.absences (employee_id, start_date);
+create index if not exists absences_status_idx on public.absences (status);
+
+comment on table public.absences is 'Périodes (date à date) exclues, au prorata des jours, du calcul du solde d''heures. Statut pending/approved/rejected.';
 
 -- Migration depuis l'ancienne table weekly_absences (semaines entières) :
 -- reprend chaque semaine marquée comme une période lundi -> samedi, puis
@@ -266,16 +285,49 @@ create policy "shifts_owner_write" on public.shifts
   with check (is_owner());
 
 -- ---- absences ----
+-- Tout le monde voit les absences "approved" de son groupe (pour savoir qui
+-- est absent) ; chacun voit aussi ses propres demandes quel que soit leur
+-- statut ; le propriétaire voit tout.
 drop policy if exists "absences_select" on public.absences;
 create policy "absences_select" on public.absences
   for select
   using (
     is_owner()
-    or employee_id in (select id from public.profiles where group_name = my_group())
+    or employee_id = auth.uid()
+    or (
+      status = 'approved'
+      and employee_id in (select id from public.profiles where group_name = my_group())
+    )
   );
 
+-- Le propriétaire peut créer une absence pour n'importe qui avec n'importe
+-- quel statut (déjà validée). Un·e employé·e ne peut créer qu'une demande
+-- pour lui/elle-même, obligatoirement "pending".
 drop policy if exists "absences_owner_write" on public.absences;
-create policy "absences_owner_write" on public.absences
+drop policy if exists "absences_insert" on public.absences;
+create policy "absences_insert" on public.absences
+  for insert
+  with check (
+    is_owner()
+    or (employee_id = auth.uid() and status = 'pending')
+  );
+
+-- L'employé peut modifier/annuler sa propre demande tant qu'elle n'est pas
+-- encore validée. Une fois "approved"/"rejected", seul le propriétaire peut
+-- la modifier (validation, motif de refus...).
+drop policy if exists "absences_own_update" on public.absences;
+create policy "absences_own_update" on public.absences
+  for update
+  using (employee_id = auth.uid() and status = 'pending')
+  with check (employee_id = auth.uid() and status = 'pending');
+
+drop policy if exists "absences_own_delete" on public.absences;
+create policy "absences_own_delete" on public.absences
+  for delete
+  using (employee_id = auth.uid() and status = 'pending');
+
+drop policy if exists "absences_owner_all" on public.absences;
+create policy "absences_owner_all" on public.absences
   for all
   using (is_owner())
   with check (is_owner());

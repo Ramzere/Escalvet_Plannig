@@ -33,7 +33,9 @@ export default function AbsenceBar({
       a.start_date <= weekDatesIso[weekDatesIso.length - 1] &&
       a.end_date >= weekDatesIso[0]
   )
-  const absentIds = new Set(weekAbsences.map((a) => a.employee_id))
+  const absentIds = new Set(
+    weekAbsences.filter((a) => a.status === 'approved').map((a) => a.employee_id)
+  )
 
   function nameOf(employeeId: string) {
     return team.find((t) => t.id === employeeId)?.full_name ?? '—'
@@ -60,9 +62,11 @@ export default function AbsenceBar({
     const { error } = editing
       ? await supabase
           .from('absences')
-          .update({ employee_id, start_date, end_date, reason })
+          .update({ employee_id, start_date, end_date, reason, status: 'approved' })
           .eq('id', editing.id)
-      : await supabase.from('absences').insert({ employee_id, start_date, end_date, reason })
+      : await supabase
+          .from('absences')
+          .insert({ employee_id, start_date, end_date, reason, status: 'approved' })
     setBusy(false)
     if (error) {
       setError(error.message)
@@ -206,7 +210,13 @@ export default function AbsenceBar({
           {weekAbsences.map((a) => (
             <span
               key={a.id}
-              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
+              className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium ${
+                a.status === 'pending'
+                  ? 'border-sand-300 bg-sand-100 text-brand-700/70'
+                  : a.status === 'rejected'
+                    ? 'border-red-200 bg-red-50 text-red-700 line-through'
+                    : 'border-amber-300 bg-amber-100 text-amber-800'
+              }`}
             >
               <button
                 onClick={() => openEdit(a)}
@@ -216,6 +226,7 @@ export default function AbsenceBar({
                 {nameOf(a.employee_id)} · {a.reason} ({new Date(a.start_date).toLocaleDateString('fr-FR')}
                 {' → '}
                 {new Date(a.end_date).toLocaleDateString('fr-FR')})
+                {a.status === 'pending' && ' · en attente'}
               </button>
               <button
                 onClick={() => deleteAbsence(a.id)}

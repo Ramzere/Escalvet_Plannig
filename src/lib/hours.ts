@@ -58,14 +58,16 @@ export function contractAt(contracts: Contract[], isoDate: string): Contract | n
   return applicable[0] ?? null
 }
 
-/** Nombre de jours de la semaine (parmi les jours travaillés lundi -> samedi) couverts par une absence. */
+/** Nombre de jours de la semaine (parmi les jours travaillés lundi -> samedi) couverts par une absence validée. */
 export function absentDaysInWeek(
   absences: Absence[],
   employeeId: string,
   weekStartIso: string
 ): number {
   const days = weekDays(weekStartIso).map((d) => format(d, 'yyyy-MM-dd'))
-  const employeeAbsences = absences.filter((a) => a.employee_id === employeeId)
+  const employeeAbsences = absences.filter(
+    (a) => a.employee_id === employeeId && a.status === 'approved'
+  )
   return days.filter((day) => employeeAbsences.some((a) => a.start_date <= day && day <= a.end_date))
     .length
 }

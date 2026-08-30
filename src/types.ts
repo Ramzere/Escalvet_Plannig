@@ -32,12 +32,15 @@ export interface Shift {
   note?: string | null
 }
 
+export type AbsenceStatus = 'pending' | 'approved' | 'rejected'
+
 export interface Absence {
   id: string
   employee_id: string
   start_date: string // ISO date
   end_date: string // ISO date, incluse
   reason: string
+  status: AbsenceStatus
 }
 
 export const CONTRACT_TYPES: ContractType[] = ['CDI', 'CDD', 'Alternance', 'Stage']

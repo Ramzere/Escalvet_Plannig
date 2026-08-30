@@ -16,6 +16,7 @@ import ShiftPill from '../components/ShiftPill'
 import ShiftEditorModal from '../components/ShiftEditorModal'
 import HoursSummary from '../components/HoursSummary'
 import AbsenceBar from '../components/AbsenceBar'
+import AbsenceRequestForm from '../components/AbsenceRequestForm'
 import OvertimeForm from '../components/OvertimeForm'
 import PosteLegend from '../components/PosteLegend'
 
@@ -274,6 +275,14 @@ export default function PlanningPage() {
           absences={absences}
           overtimeRequests={overtimeRequests}
         />
+
+        {!isOwner && profile && (
+          <AbsenceRequestForm
+            employeeId={profile.id}
+            requests={absences}
+            onChanged={reloadAbsences}
+          />
+        )}
 
         {!isOwner && profile && (
           <OvertimeForm
