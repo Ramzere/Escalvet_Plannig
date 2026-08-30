@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
@@ -79,11 +80,34 @@ function OwnerHistory() {
   const { team } = useTeam()
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
   const { absences, reload: reloadAbsences } = useAbsences()
+  const [employeeFilter, setEmployeeFilter] = useState('')
+
+  const filteredOvertime = employeeFilter
+    ? overtimeRequests.filter((r) => r.employee_id === employeeFilter)
+    : overtimeRequests
+  const filteredAbsences = employeeFilter
+    ? absences.filter((a) => a.employee_id === employeeFilter)
+    : absences
 
   return (
     <div className="space-y-4">
-      <OvertimeHistoryPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
-      <AbsenceHistoryPanel team={team} requests={absences} onChanged={reloadAbsences} />
+      <div className="flex items-center gap-2">
+        <label className="text-xs font-medium text-brand-900">Filtrer par personne</label>
+        <select
+          value={employeeFilter}
+          onChange={(e) => setEmployeeFilter(e.target.value)}
+          className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+        >
+          <option value="">Toute l&apos;équipe</option>
+          {team.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.full_name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <OvertimeHistoryPanel team={team} requests={filteredOvertime} onChanged={reloadOvertime} />
+      <AbsenceHistoryPanel team={team} requests={filteredAbsences} onChanged={reloadAbsences} />
     </div>
   )
 }
