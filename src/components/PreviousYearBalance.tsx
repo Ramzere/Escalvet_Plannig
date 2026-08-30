@@ -1,5 +1,5 @@
 import { formatHours, projectedBalance, weekStartOf } from '../lib/hours'
-import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
+import type { Absence, Contract, OvertimeRequest, Profile, Shift } from '../types'
 
 export default function PreviousYearBalance({
   team,
@@ -13,7 +13,7 @@ export default function PreviousYearBalance({
   year: number
   shifts: Shift[]
   contracts: Contract[]
-  absences: WeeklyAbsence[]
+  absences: Absence[]
   overtimeRequests: OvertimeRequest[]
 }) {
   const lastWeekOfYear = weekStartOf(new Date(year, 11, 31))

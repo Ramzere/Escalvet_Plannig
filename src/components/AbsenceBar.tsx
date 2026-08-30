@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Profile, WeeklyAbsence } from '../types'
+import type { Absence, Profile } from '../types'
+import { weekDays } from '../lib/hours'
+import { format } from 'date-fns'
 import ErrorBanner from './ErrorBanner'
 
 export default function AbsenceBar({
@@ -12,31 +14,61 @@ export default function AbsenceBar({
 }: {
   team: Profile[]
   weekStart: string
-  absences: WeeklyAbsence[]
+  absences: Absence[]
   isOwner: boolean
   onChanged: () => void
 }) {
-  const [busy, setBusy] = useState<string | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const absentIds = new Set(
-    absences.filter((a) => a.week_start === weekStart).map((a) => a.employee_id)
+
+  const weekDatesIso = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
+  const weekAbsences = absences.filter(
+    (a) => a.start_date <= weekDatesIso[weekDatesIso.length - 1] && a.end_date >= weekDatesIso[0]
   )
+  const absentIds = new Set(weekAbsences.map((a) => a.employee_id))
 
-  if (!isOwner && absentIds.size === 0) return null
+  function nameOf(employeeId: string) {
+    return team.find((t) => t.id === employeeId)?.full_name ?? '—'
+  }
 
-  async function toggle(employeeId: string) {
-    setBusy(employeeId)
+  async function addAbsence(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setBusy(true)
     setError(null)
-    const { error } = absentIds.has(employeeId)
-      ? await supabase
-          .from('weekly_absences')
-          .delete()
-          .eq('employee_id', employeeId)
-          .eq('week_start', weekStart)
-      : await supabase
-          .from('weekly_absences')
-          .insert({ employee_id: employeeId, week_start: weekStart, reason: 'Vacances' })
-    setBusy(null)
+    const form = new FormData(e.currentTarget)
+    const employee_id = String(form.get('employee_id'))
+    const start_date = String(form.get('start_date'))
+    const end_date = String(form.get('end_date'))
+    const reason = String(form.get('reason') || 'Congés')
+    if (!employee_id || !start_date || !end_date) {
+      setBusy(false)
+      return
+    }
+    if (end_date < start_date) {
+      setError('La date de fin doit être après la date de début.')
+      setBusy(false)
+      return
+    }
+    const { error } = await supabase
+      .from('absences')
+      .insert({ employee_id, start_date, end_date, reason })
+    setBusy(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    ;(e.target as HTMLFormElement).reset()
+    setFormOpen(false)
+    onChanged()
+  }
+
+  async function deleteAbsence(id: string) {
+    if (!window.confirm('Supprimer cette absence ?')) return
+    setBusy(true)
+    setError(null)
+    const { error } = await supabase.from('absences').delete().eq('id', id)
+    setBusy(false)
     if (error) {
       setError(error.message)
       return
@@ -45,9 +77,10 @@ export default function AbsenceBar({
   }
 
   if (!isOwner) {
+    if (absentIds.size === 0) return null
     return (
       <div className="rounded-xl bg-amber-50 px-4 py-2 text-sm text-amber-800">
-        En vacances/absent(e) cette semaine :{' '}
+        En congé/absent(e) cette semaine :{' '}
         {team
           .filter((t) => absentIds.has(t.id))
           .map((t) => t.full_name)
@@ -58,30 +91,98 @@ export default function AbsenceBar({
 
   return (
     <div className="rounded-xl border border-sand-200 bg-white px-4 py-3">
-      <p className="mb-2 text-xs font-medium text-brand-700/70">
-        Marquer une absence pour toute la semaine (exclue du calcul d&apos;heures)
-      </p>
-      <ErrorBanner message={error} />
-      <div className="flex flex-wrap gap-2">
-        {team.map((t) => {
-          const absent = absentIds.has(t.id)
-          return (
-            <button
-              key={t.id}
-              onClick={() => toggle(t.id)}
-              disabled={busy === t.id}
-              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                absent
-                  ? 'border-amber-300 bg-amber-100 text-amber-800'
-                  : 'border-sand-300 bg-white text-brand-700/70 hover:bg-sand-50'
-              }`}
-            >
-              {t.full_name}
-              {absent ? ' · absent(e)' : ''}
-            </button>
-          )
-        })}
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs font-medium text-brand-700/70">
+          Absences (congés, repos...) — réduisent les heures théoriques au prorata des jours
+        </p>
+        <button
+          onClick={() => setFormOpen((v) => !v)}
+          className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
+        >
+          {formOpen ? 'Annuler' : '+ Ajouter une absence'}
+        </button>
       </div>
+
+      <ErrorBanner message={error} />
+
+      {formOpen && (
+        <form onSubmit={addAbsence} className="mb-3 flex flex-wrap items-end gap-2">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-900">Personne</label>
+            <select
+              name="employee_id"
+              required
+              defaultValue={team[0]?.id ?? ''}
+              className="w-40 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+            >
+              {team.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.full_name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-900">Du</label>
+            <input
+              name="start_date"
+              type="date"
+              required
+              defaultValue={weekDatesIso[0]}
+              className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-900">Au</label>
+            <input
+              name="end_date"
+              type="date"
+              required
+              defaultValue={weekDatesIso[0]}
+              className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-brand-900">Motif</label>
+            <input
+              name="reason"
+              placeholder="Congés"
+              defaultValue="Congés"
+              className="w-32 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={busy}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
+          >
+            Enregistrer
+          </button>
+        </form>
+      )}
+
+      {weekAbsences.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {weekAbsences.map((a) => (
+            <span
+              key={a.id}
+              className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
+            >
+              {nameOf(a.employee_id)} · {a.reason} ({new Date(a.start_date).toLocaleDateString('fr-FR')}
+              {' → '}
+              {new Date(a.end_date).toLocaleDateString('fr-FR')})
+              <button
+                onClick={() => deleteAbsence(a.id)}
+                disabled={busy}
+                className="text-amber-700 hover:text-amber-900"
+                aria-label="Supprimer"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

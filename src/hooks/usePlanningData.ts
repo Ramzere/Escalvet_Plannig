@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Contract, OvertimeRequest, Profile, Shift, WeeklyAbsence } from '../types'
+import type { Absence, Contract, OvertimeRequest, Profile, Shift } from '../types'
 
 /**
  * Recharge `onChange` dès qu'une ligne de `table` change côté Supabase
@@ -49,7 +49,7 @@ export function useContracts() {
     setLoading(true)
     const { data, error } = await supabase
       .from('contracts')
-      .select('id, employee_id, label, weekly_hours, effective_from')
+      .select('id, employee_id, label, contract_type, weekly_hours, effective_from, effective_to')
       .order('effective_from', { ascending: false })
     if (!error) setContracts((data as Contract[]) ?? [])
     setLoading(false)
@@ -64,22 +64,23 @@ export function useContracts() {
 }
 
 export function useAbsences() {
-  const [absences, setAbsences] = useState<WeeklyAbsence[]>([])
+  const [absences, setAbsences] = useState<Absence[]>([])
   const [loading, setLoading] = useState(true)
 
   const reload = useCallback(async () => {
     setLoading(true)
     const { data, error } = await supabase
-      .from('weekly_absences')
-      .select('id, employee_id, week_start, reason')
-    if (!error) setAbsences((data as WeeklyAbsence[]) ?? [])
+      .from('absences')
+      .select('id, employee_id, start_date, end_date, reason')
+      .order('start_date', { ascending: false })
+    if (!error) setAbsences((data as Absence[]) ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => {
     reload()
   }, [reload])
-  useTableChanges('weekly_absences', reload)
+  useTableChanges('absences', reload)
 
   return { absences, loading, reload }
 }

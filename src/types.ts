@@ -1,6 +1,7 @@
 export type Group = 'asv' | 'veterinaire'
 export type Poste = 'bleu' | 'violet' | 'vert' | 'seul'
 export type Period = 'matin' | 'apres-midi'
+export type ContractType = 'CDI' | 'CDD' | 'Alternance' | 'Stage'
 
 export interface Profile {
   id: string
@@ -14,8 +15,10 @@ export interface Contract {
   id: string
   employee_id: string
   label: string
+  contract_type: ContractType
   weekly_hours: number
   effective_from: string // ISO date (yyyy-mm-dd)
+  effective_to: string | null // ISO date, toujours null pour un CDI
 }
 
 export interface Shift {
@@ -25,16 +28,19 @@ export interface Shift {
   period: Period
   start_time: string // HH:MM or HH:MM:SS
   end_time: string
-  poste: Poste
+  poste: Poste | null // null pour les vétérinaires (pas de notion de poste)
   note?: string | null
 }
 
-export interface WeeklyAbsence {
+export interface Absence {
   id: string
   employee_id: string
-  week_start: string // ISO date (Monday)
+  start_date: string // ISO date
+  end_date: string // ISO date, incluse
   reason: string
 }
+
+export const CONTRACT_TYPES: ContractType[] = ['CDI', 'CDD', 'Alternance', 'Stage']
 
 export type OvertimeStatus = 'pending' | 'approved' | 'rejected'
 

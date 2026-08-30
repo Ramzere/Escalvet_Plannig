@@ -38,6 +38,9 @@ export default function ShiftEditorModal({
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const selectedProfile = team.find((t) => t.id === employeeId)
+  const isVet = selectedProfile?.group_name === 'veterinaire'
+
   async function handleSave() {
     if (!employeeId) {
       setError('Choisis une personne.')
@@ -60,7 +63,7 @@ export default function ShiftEditorModal({
       period,
       start_time: startTime,
       end_time: endTime,
-      poste,
+      poste: isVet ? null : poste,
       created_by: user?.id,
     }
 
@@ -138,26 +141,28 @@ export default function ShiftEditorModal({
             </div>
           </div>
 
-          <div>
-            <label className="mb-1 block text-xs font-medium text-brand-900">Poste</label>
-            <div className="grid grid-cols-2 gap-2">
-              {POSTE_OPTIONS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPoste(p)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition ${
-                    poste === p
-                      ? 'border-brand-400 ring-2 ring-brand-200'
-                      : 'border-sand-300 hover:bg-sand-50'
-                  }`}
-                >
-                  <span className={`h-2.5 w-2.5 rounded-full ${POSTE_DOT[p]}`} />
-                  {POSTE_SHORT_LABELS[p]}
-                </button>
-              ))}
+          {!isVet && (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-brand-900">Poste</label>
+              <div className="grid grid-cols-2 gap-2">
+                {POSTE_OPTIONS.map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setPoste(p)}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition ${
+                      poste === p
+                        ? 'border-brand-400 ring-2 ring-brand-200'
+                        : 'border-sand-300 hover:bg-sand-50'
+                    }`}
+                  >
+                    <span className={`h-2.5 w-2.5 rounded-full ${POSTE_DOT[p]}`} />
+                    {POSTE_SHORT_LABELS[p]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {error && (

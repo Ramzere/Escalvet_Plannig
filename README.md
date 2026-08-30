@@ -3,10 +3,12 @@
 Application de planning pour un cabinet vétérinaire : chaque membre de
 l'équipe a son propre compte, les ASV et les vétérinaires voient leur
 planning respectif séparément, et la personne propriétaire voit et modifie
-tout. Le nombre d'heures théoriques (contrat) de chaque employé est
-configurable, et le solde d'heures (en plus / en moins) est calculé
-automatiquement, y compris de façon prévisionnelle sur les semaines futures
-déjà planifiées, depuis le 1er janvier de l'année en cours.
+tout. Le contrat de chaque employé (type CDI/CDD/Alternance/Stage, heures
+théoriques par semaine, dates de début et de fin) est configurable, et le
+solde d'heures (en plus / en moins) est calculé automatiquement — au prorata
+des absences déclarées — y compris de façon prévisionnelle sur les semaines
+futures déjà planifiées. Le cumul repart de zéro au 1er janvier de chaque
+année, ou dès le début du contrat en cours s'il a démarré après.
 
 ## Stack
 
@@ -18,6 +20,23 @@ déjà planifiées, depuis le 1er janvier de l'année en cours.
 
 Aucun de ces services n'est payant pour ce volume d'usage, dans le cadre
 d'une utilisation non commerciale.
+
+---
+
+## Mise à jour d'un projet Supabase existant
+
+Le fichier [`supabase/schema.sql`](./supabase/schema.sql) est écrit pour
+pouvoir être rejoué sans risque sur une base déjà créée : il ajoute les
+nouvelles colonnes/tables sans toucher aux données existantes, **sauf** pour
+l'ancienne table `weekly_absences` (absences par semaine entière) qui est
+remplacée par une nouvelle table `absences` (absences date à date) — les
+données existantes sont automatiquement reprises dans la nouvelle table
+avant que l'ancienne ne soit supprimée.
+
+Pour appliquer les dernières évolutions (types de contrat CDI/CDD/
+Alternance/Stage, absences date à date, poste optionnel pour les
+vétérinaires) sur un projet déjà en place : va dans **SQL Editor**, colle à
+nouveau le contenu de `supabase/schema.sql` et clique sur **Run**.
 
 ---
 
