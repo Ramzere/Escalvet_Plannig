@@ -19,6 +19,7 @@ export default function AbsenceBar({
   onChanged: () => void
 }) {
   const [formOpen, setFormOpen] = useState(false)
+  const [editing, setEditing] = useState<Absence | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,7 +37,7 @@ export default function AbsenceBar({
     return team.find((t) => t.id === employeeId)?.full_name ?? '—'
   }
 
-  async function addAbsence(e: FormEvent<HTMLFormElement>) {
+  async function saveAbsence(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setBusy(true)
     setError(null)
@@ -54,9 +55,12 @@ export default function AbsenceBar({
       setBusy(false)
       return
     }
-    const { error } = await supabase
-      .from('absences')
-      .insert({ employee_id, start_date, end_date, reason })
+    const { error } = editing
+      ? await supabase
+          .from('absences')
+          .update({ employee_id, start_date, end_date, reason })
+          .eq('id', editing.id)
+      : await supabase.from('absences').insert({ employee_id, start_date, end_date, reason })
     setBusy(false)
     if (error) {
       setError(error.message)
@@ -64,7 +68,18 @@ export default function AbsenceBar({
     }
     ;(e.target as HTMLFormElement).reset()
     setFormOpen(false)
+    setEditing(null)
     onChanged()
+  }
+
+  function openEdit(a: Absence) {
+    setEditing(a)
+    setFormOpen(true)
+  }
+
+  function closeForm() {
+    setFormOpen(false)
+    setEditing(null)
   }
 
   async function deleteAbsence(id: string) {
@@ -77,6 +92,7 @@ export default function AbsenceBar({
       setError(error.message)
       return
     }
+    if (editing?.id === id) closeForm()
     onChanged()
   }
 
@@ -100,7 +116,7 @@ export default function AbsenceBar({
           Absences (congés, repos...) — réduisent les heures théoriques au prorata des jours
         </p>
         <button
-          onClick={() => setFormOpen((v) => !v)}
+          onClick={() => (formOpen ? closeForm() : setFormOpen(true))}
           className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
         >
           {formOpen ? 'Annuler' : '+ Ajouter une absence'}
@@ -110,13 +126,17 @@ export default function AbsenceBar({
       <ErrorBanner message={error} />
 
       {formOpen && (
-        <form onSubmit={addAbsence} className="mb-3 flex flex-wrap items-end gap-2">
+        <form
+          key={editing?.id ?? 'new'}
+          onSubmit={saveAbsence}
+          className="mb-3 flex flex-wrap items-end gap-2"
+        >
           <div>
             <label className="mb-1 block text-xs font-medium text-brand-900">Personne</label>
             <select
               name="employee_id"
               required
-              defaultValue={team[0]?.id ?? ''}
+              defaultValue={editing?.employee_id ?? team[0]?.id ?? ''}
               className="w-40 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             >
               {team.map((t) => (
@@ -132,7 +152,7 @@ export default function AbsenceBar({
               name="start_date"
               type="date"
               required
-              defaultValue={weekDatesIso[0]}
+              defaultValue={editing?.start_date ?? weekDatesIso[0]}
               className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
@@ -142,7 +162,7 @@ export default function AbsenceBar({
               name="end_date"
               type="date"
               required
-              defaultValue={weekDatesIso[0]}
+              defaultValue={editing?.end_date ?? weekDatesIso[0]}
               className="rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
@@ -151,7 +171,7 @@ export default function AbsenceBar({
             <input
               name="reason"
               placeholder="Congés"
-              defaultValue="Congés"
+              defaultValue={editing?.reason ?? 'Congés'}
               className="w-32 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
@@ -160,7 +180,7 @@ export default function AbsenceBar({
             disabled={busy}
             className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
           >
-            Enregistrer
+            {editing ? 'Modifier' : 'Enregistrer'}
           </button>
         </form>
       )}
@@ -172,9 +192,15 @@ export default function AbsenceBar({
               key={a.id}
               className="flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-100 px-3 py-1 text-xs font-medium text-amber-800"
             >
-              {nameOf(a.employee_id)} · {a.reason} ({new Date(a.start_date).toLocaleDateString('fr-FR')}
-              {' → '}
-              {new Date(a.end_date).toLocaleDateString('fr-FR')})
+              <button
+                onClick={() => openEdit(a)}
+                disabled={busy}
+                className="hover:underline"
+              >
+                {nameOf(a.employee_id)} · {a.reason} ({new Date(a.start_date).toLocaleDateString('fr-FR')}
+                {' → '}
+                {new Date(a.end_date).toLocaleDateString('fr-FR')})
+              </button>
               <button
                 onClick={() => deleteAbsence(a.id)}
                 disabled={busy}
