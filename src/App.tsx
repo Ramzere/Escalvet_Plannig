@@ -5,6 +5,7 @@ import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import PlanningPage from './pages/PlanningPage'
 import TeamAdminPage from './pages/TeamAdminPage'
+import HistoryPage from './pages/HistoryPage'
 
 function Gate({ children }: { children: ReactNode }) {
   const { session, profile, loading } = useAuth()
@@ -43,6 +44,7 @@ export default function App() {
             <Route element={<Layout />}>
               <Route path="/" element={<Navigate to="/planning" replace />} />
               <Route path="/planning" element={<PlanningPage />} />
+              <Route path="/historique" element={<HistoryPage />} />
               <Route
                 path="/equipe"
                 element={

@@ -32,6 +32,9 @@ export default function Layout() {
             <NavLink to="/planning" className={linkClass}>
               Planning
             </NavLink>
+            <NavLink to="/historique" className={linkClass}>
+              Historique
+            </NavLink>
             {profile?.is_owner && (
               <NavLink to="/equipe" className={linkClass}>
                 Équipe

@@ -13,11 +13,9 @@ import { CONTRACT_TYPES } from '../types'
 import type { ContractType, Group } from '../types'
 import ErrorBanner from '../components/ErrorBanner'
 import OvertimePendingPanel from '../components/OvertimePendingPanel'
-import OvertimeHistoryPanel from '../components/OvertimeHistoryPanel'
 import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
 import PreviousYearBalance from '../components/PreviousYearBalance'
 import AbsencePendingPanel from '../components/AbsencePendingPanel'
-import AbsenceHistoryPanel from '../components/AbsenceHistoryPanel'
 
 export default function TeamAdminPage() {
   const { team, loading, reload } = useTeam()
@@ -105,10 +103,6 @@ export default function TeamAdminPage() {
       <AbsencePendingPanel team={team} requests={absences} onChanged={reloadAbsences} />
 
       <OvertimeYearlySummary team={team} requests={overtimeRequests} />
-
-      <OvertimeHistoryPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
-
-      <AbsenceHistoryPanel team={team} requests={absences} onChanged={reloadAbsences} />
 
       <PreviousYearBalance
         team={team}

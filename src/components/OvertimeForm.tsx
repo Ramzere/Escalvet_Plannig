@@ -1,22 +1,12 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import { formatHours, overtimeHoursOf, weekDays } from '../lib/hours'
-import type { OvertimeRequest, OvertimeStatus } from '../types'
+import type { OvertimeRequest } from '../types'
 import ErrorBanner from './ErrorBanner'
-
-const STATUS_LABEL: Record<OvertimeStatus, string> = {
-  pending: 'En attente',
-  approved: 'Validée',
-  rejected: 'Refusée',
-}
-
-const STATUS_STYLE: Record<OvertimeStatus, string> = {
-  pending: 'bg-amber-100 text-amber-800',
-  approved: 'bg-brand-100 text-brand-700',
-  rejected: 'bg-red-100 text-red-700',
-}
+import StatusBadge from './StatusBadge'
 
 export default function OvertimeForm({
   employeeId,
@@ -152,11 +142,7 @@ export default function OvertimeForm({
                 {r.note && <span className="text-brand-700/50"> · {r.note}</span>}
               </div>
               <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[r.status]}`}
-                >
-                  {STATUS_LABEL[r.status]}
-                </span>
+                <StatusBadge status={r.status} />
                 {r.status === 'pending' && (
                   <button
                     onClick={() => cancel(r.id)}
@@ -170,6 +156,13 @@ export default function OvertimeForm({
           ))}
         </div>
       )}
+
+      <Link
+        to="/historique"
+        className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
+      >
+        Voir tout mon historique d&apos;heures sup →
+      </Link>
     </div>
   )
 }

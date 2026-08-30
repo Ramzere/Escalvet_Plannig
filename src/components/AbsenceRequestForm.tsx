@@ -1,19 +1,9 @@
 import { useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import type { Absence, AbsenceStatus } from '../types'
+import type { Absence } from '../types'
 import ErrorBanner from './ErrorBanner'
-
-const STATUS_LABEL: Record<AbsenceStatus, string> = {
-  pending: 'En attente',
-  approved: 'Validée',
-  rejected: 'Refusée',
-}
-
-const STATUS_STYLE: Record<AbsenceStatus, string> = {
-  pending: 'bg-amber-100 text-amber-800',
-  approved: 'bg-brand-100 text-brand-700',
-  rejected: 'bg-red-100 text-red-700',
-}
+import StatusBadge from './StatusBadge'
 
 export default function AbsenceRequestForm({
   employeeId,
@@ -27,8 +17,8 @@ export default function AbsenceRequestForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const myRequests = requests
-    .filter((a) => a.employee_id === employeeId)
+  const myPendingRequests = requests
+    .filter((a) => a.employee_id === employeeId && a.status === 'pending')
     .sort((a, b) => (a.start_date < b.start_date ? 1 : -1))
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -118,9 +108,9 @@ export default function AbsenceRequestForm({
         </button>
       </form>
 
-      {myRequests.length > 0 && (
+      {myPendingRequests.length > 0 && (
         <div className="divide-y divide-sand-100 border-t border-sand-100 pt-2">
-          {myRequests.map((a) => (
+          {myPendingRequests.map((a) => (
             <div key={a.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
               <div>
                 <span className="font-medium text-brand-900">
@@ -130,24 +120,25 @@ export default function AbsenceRequestForm({
                 {a.reason && <span className="text-brand-700/50"> · {a.reason}</span>}
               </div>
               <div className="flex items-center gap-2">
-                <span
-                  className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[a.status]}`}
+                <StatusBadge status={a.status} />
+                <button
+                  onClick={() => cancel(a.id)}
+                  className="text-xs font-medium text-red-600 hover:underline"
                 >
-                  {STATUS_LABEL[a.status]}
-                </span>
-                {a.status === 'pending' && (
-                  <button
-                    onClick={() => cancel(a.id)}
-                    className="text-xs font-medium text-red-600 hover:underline"
-                  >
-                    Annuler
-                  </button>
-                )}
+                  Annuler
+                </button>
               </div>
             </div>
           ))}
         </div>
       )}
+
+      <Link
+        to="/historique"
+        className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
+      >
+        Voir tout mon historique d&apos;absences →
+      </Link>
     </div>
   )
 }
