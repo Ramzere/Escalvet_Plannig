@@ -168,6 +168,18 @@ create table if not exists public.overtime_requests (
   constraint overtime_requests_nonzero check (hours > 0 or minutes > 0)
 );
 
+-- Les colonnes "qui a créé / qui a décidé" ne doivent pas empêcher la
+-- suppression définitive d'un compte : on les met à null dans ce cas.
+alter table public.shifts drop constraint if exists shifts_created_by_fkey;
+alter table public.shifts add constraint shifts_created_by_fkey
+  foreign key (created_by) references public.profiles (id) on delete set null;
+alter table public.absences drop constraint if exists absences_decided_by_fkey;
+alter table public.absences add constraint absences_decided_by_fkey
+  foreign key (decided_by) references public.profiles (id) on delete set null;
+alter table public.overtime_requests drop constraint if exists overtime_requests_decided_by_fkey;
+alter table public.overtime_requests add constraint overtime_requests_decided_by_fkey
+  foreign key (decided_by) references public.profiles (id) on delete set null;
+
 create index if not exists overtime_requests_employee_idx on public.overtime_requests (employee_id, work_date);
 create index if not exists overtime_requests_status_idx on public.overtime_requests (status);
 
@@ -177,6 +189,21 @@ comment on table public.overtime_requests is 'Heures sup déclarées par un empl
 -- FONCTIONS UTILITAIRES (security definer pour éviter la récursion RLS)
 -- ============================================================================
 
+-- Un compte désactivé (active = false, ex. personne qui a quitté le cabinet)
+-- garde son historique mais perd tout accès : is_active() est false, donc
+-- is_owner() est false et my_group() est null → toutes les politiques
+-- ci-dessous le traitent comme un inconnu. Il ne peut plus que lire son
+-- propre profil (pour que l'appli affiche "compte désactivé").
+create or replace function public.is_active()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select active from public.profiles where id = auth.uid()), false);
+$$;
+
 create or replace function public.is_owner()
 returns boolean
 language sql
@@ -184,7 +211,10 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce((select is_owner from public.profiles where id = auth.uid()), false);
+  select coalesce(
+    (select is_owner and active from public.profiles where id = auth.uid()),
+    false
+  );
 $$;
 
 create or replace function public.my_group()
@@ -194,7 +224,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select group_name from public.profiles where id = auth.uid();
+  select group_name from public.profiles where id = auth.uid() and active;
 $$;
 
 -- Création automatique du profil à l'inscription d'un nouvel utilisateur
@@ -262,7 +292,7 @@ create policy "profiles_owner_delete" on public.profiles
 drop policy if exists "contracts_select" on public.contracts;
 create policy "contracts_select" on public.contracts
   for select
-  using (is_owner() or employee_id = auth.uid());
+  using (is_owner() or (employee_id = auth.uid() and is_active()));
 
 drop policy if exists "contracts_owner_write" on public.contracts;
 create policy "contracts_owner_write" on public.contracts
@@ -294,7 +324,7 @@ create policy "absences_select" on public.absences
   for select
   using (
     is_owner()
-    or employee_id = auth.uid()
+    or (employee_id = auth.uid() and is_active())
     or (
       status = 'approved'
       and employee_id in (select id from public.profiles where group_name = my_group())
@@ -310,7 +340,7 @@ create policy "absences_insert" on public.absences
   for insert
   with check (
     is_owner()
-    or (employee_id = auth.uid() and status = 'pending')
+    or (employee_id = auth.uid() and is_active() and status = 'pending')
   );
 
 -- L'employé peut modifier/annuler sa propre demande tant qu'elle n'est pas
@@ -319,13 +349,13 @@ create policy "absences_insert" on public.absences
 drop policy if exists "absences_own_update" on public.absences;
 create policy "absences_own_update" on public.absences
   for update
-  using (employee_id = auth.uid() and status = 'pending')
-  with check (employee_id = auth.uid() and status = 'pending');
+  using (employee_id = auth.uid() and is_active() and status = 'pending')
+  with check (employee_id = auth.uid() and is_active() and status = 'pending');
 
 drop policy if exists "absences_own_delete" on public.absences;
 create policy "absences_own_delete" on public.absences
   for delete
-  using (employee_id = auth.uid() and status = 'pending');
+  using (employee_id = auth.uid() and is_active() and status = 'pending');
 
 drop policy if exists "absences_owner_all" on public.absences;
 create policy "absences_owner_all" on public.absences
@@ -337,12 +367,12 @@ create policy "absences_owner_all" on public.absences
 drop policy if exists "overtime_requests_select" on public.overtime_requests;
 create policy "overtime_requests_select" on public.overtime_requests
   for select
-  using (is_owner() or employee_id = auth.uid());
+  using (is_owner() or (employee_id = auth.uid() and is_active()));
 
 drop policy if exists "overtime_requests_insert" on public.overtime_requests;
 create policy "overtime_requests_insert" on public.overtime_requests
   for insert
-  with check (employee_id = auth.uid());
+  with check (employee_id = auth.uid() and is_active());
 
 -- L'employé peut modifier/supprimer sa propre déclaration tant qu'elle n'est
 -- pas encore validée. Une fois "approved"/"rejected", seul le propriétaire
@@ -350,13 +380,13 @@ create policy "overtime_requests_insert" on public.overtime_requests
 drop policy if exists "overtime_requests_own_update" on public.overtime_requests;
 create policy "overtime_requests_own_update" on public.overtime_requests
   for update
-  using (employee_id = auth.uid() and status = 'pending')
-  with check (employee_id = auth.uid() and status = 'pending');
+  using (employee_id = auth.uid() and is_active() and status = 'pending')
+  with check (employee_id = auth.uid() and is_active() and status = 'pending');
 
 drop policy if exists "overtime_requests_own_delete" on public.overtime_requests;
 create policy "overtime_requests_own_delete" on public.overtime_requests
   for delete
-  using (employee_id = auth.uid() and status = 'pending');
+  using (employee_id = auth.uid() and is_active() and status = 'pending');
 
 drop policy if exists "overtime_requests_owner_write" on public.overtime_requests;
 create policy "overtime_requests_owner_write" on public.overtime_requests
@@ -385,6 +415,16 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ============================================================================
+-- DÉPART D'UN·E EMPLOYÉ·E
+-- 1. Onglet Équipe → décocher "Compte actif" : la personne ne peut plus se
+--    connecter ni rien lire, son historique d'heures est conservé.
+-- 2. Si besoin, "Supprimer définitivement" (même onglet) : passe par l'Edge
+--    Function supabase/functions/delete-employee, qui supprime le compte
+--    d'authentification ; profil, créneaux, contrats, absences et heures sup
+--    sont supprimés en cascade. Irréversible.
+-- ============================================================================
 
 -- ============================================================================
 -- FIN — Rappel : pour créer le tout premier compte propriétaire, exécute

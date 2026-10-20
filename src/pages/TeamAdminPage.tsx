@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 import {
   useAbsences,
   useContracts,
@@ -18,12 +19,14 @@ import PreviousYearBalance from '../components/PreviousYearBalance'
 import AbsencePendingPanel from '../components/AbsencePendingPanel'
 
 export default function TeamAdminPage() {
+  const { profile: me } = useAuth()
   const { team, loading, reload } = useTeam()
   const { contracts, reload: reloadContracts } = useContracts()
   const { absences, reload: reloadAbsences } = useAbsences()
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const [contractError, setContractError] = useState<string | null>(null)
   const [newContractType, setNewContractType] = useState<ContractType>('CDI')
 
@@ -38,6 +41,7 @@ export default function TeamAdminPage() {
   const { shifts: previousYearShifts } = useShiftsRange(previousYearRange.from, previousYearRange.to)
 
   const selected = team.find((t) => t.id === selectedId) ?? null
+  const isSelf = !!selected && selected.id === me?.id
   const selectedContracts = contracts
     .filter((c) => c.employee_id === selectedId)
     .sort((a, b) => (a.effective_from < b.effective_from ? 1 : -1))
@@ -50,6 +54,41 @@ export default function TeamAdminPage() {
       setProfileError(error.message)
       return
     }
+    reload()
+  }
+
+  /**
+   * Suppression définitive : passe par l'Edge Function `delete-employee`
+   * (seule une clé service peut supprimer un compte d'authentification).
+   * Le profil et tout l'historique partent en cascade côté base.
+   */
+  async function deleteEmployee() {
+    if (!selected) return
+    const typed = window.prompt(
+      `Supprimer définitivement ${selected.full_name} ?\n\n` +
+        `Son compte, ses créneaux, contrats, absences et heures sup seront effacés. ` +
+        `Cette action est irréversible.\n\n` +
+        `Pour confirmer, tape son nom : ${selected.full_name}`
+    )
+    if (typed === null) return
+    if (typed.trim() !== selected.full_name.trim()) {
+      setProfileError('Le nom saisi ne correspond pas, suppression annulée.')
+      return
+    }
+    setDeleting(true)
+    setProfileError(null)
+    const { data, error } = await supabase.functions.invoke('delete-employee', {
+      body: { employee_id: selected.id },
+    })
+    setDeleting(false)
+    if (error || data?.error) {
+      setProfileError(
+        data?.error ??
+          "Impossible de supprimer ce compte. Vérifie que l'Edge Function delete-employee est déployée."
+      )
+      return
+    }
+    setSelectedId(null)
     reload()
   }
 
@@ -182,6 +221,7 @@ export default function TeamAdminPage() {
                   <input
                     type="checkbox"
                     checked={selected.is_owner}
+                    disabled={isSelf}
                     onChange={(e) => updateProfile('is_owner', e.target.checked)}
                   />
                   Propriétaire (accès total)
@@ -190,12 +230,36 @@ export default function TeamAdminPage() {
                   <input
                     type="checkbox"
                     checked={selected.active}
+                    disabled={isSelf}
                     onChange={(e) => updateProfile('active', e.target.checked)}
                   />
                   Compte actif
                 </label>
               </div>
+              <p className="mt-3 text-xs text-brand-700/60">
+                {isSelf
+                  ? 'Tu ne peux pas désactiver ni rétrograder ton propre compte.'
+                  : 'Un compte désactivé ne peut plus se connecter ni rien consulter, mais son historique (heures, absences) est conservé.'}
+              </p>
             </div>
+
+            {!isSelf && (
+              <div className="rounded-2xl border border-red-200 bg-red-50/40 p-5">
+                <h2 className="mb-1 text-sm font-semibold text-red-800">Départ définitif</h2>
+                <p className="mb-3 text-xs text-red-800/70">
+                  Supprime le compte et tout son historique (créneaux, contrats, absences, heures
+                  sup). À réserver au cas où plus aucune trace n&apos;est nécessaire ; sinon,
+                  préfère décocher « Compte actif ».
+                </p>
+                <button
+                  onClick={deleteEmployee}
+                  disabled={deleting}
+                  className="rounded-lg border border-red-300 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  {deleting ? 'Suppression…' : 'Supprimer définitivement'}
+                </button>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-sand-200 bg-white p-5">
               <h2 className="mb-1 text-sm font-semibold text-brand-900">Contrat</h2>

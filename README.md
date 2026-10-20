@@ -76,6 +76,27 @@ qui gère ça), puis va dans l'onglet **Équipe** de l'application pour
 renseigner le nom, le groupe (ASV / Vétérinaire) et le contrat (heures par
 semaine) de la personne.
 
+### Départ d'un·e employé·e
+
+1. **Désactiver le compte** (recommandé) : onglet **Équipe**, sélectionne la
+   personne et décoche « Compte actif ». Elle ne peut plus se connecter ni
+   rien consulter, mais son historique d'heures, d'absences et de contrats
+   est conservé.
+2. **Supprimer définitivement** (irréversible) : même onglet, bloc « Départ
+   définitif ». Le compte et tout son historique sont effacés. Ce bouton
+   passe par une Edge Function Supabase qu'il faut déployer une fois :
+
+   ```bash
+   npm install -g supabase          # CLI Supabase, si pas déjà installée
+   supabase login
+   supabase functions deploy delete-employee --project-ref <ref-du-projet>
+   ```
+
+   La référence du projet se trouve dans l'URL du dashboard
+   (`https://supabase.com/dashboard/project/<ref-du-projet>`). Tant que la
+   fonction n'est pas déployée, le bouton affiche une erreur explicite et la
+   désactivation reste possible.
+
 ## 3. Lancer l'application en local
 
 ```bash
@@ -141,3 +162,7 @@ gh repo create escalvet --private --source=. --push
 - **Qui modifie quoi** : seule la personne propriétaire (is_owner) peut
   créer/modifier/supprimer des créneaux, gérer les comptes et les contrats.
   Les autres comptes sont en lecture seule sur le planning de leur groupe.
+- **Qui voit quoi** : chacun voit les créneaux et les absences validées de
+  son groupe (pour savoir avec qui il travaille), mais uniquement son propre
+  solde d'heures, ses contrats, ses demandes d'absence et d'heures sup. Le
+  propriétaire voit tout. Un compte désactivé ne voit plus rien.
