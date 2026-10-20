@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Suspense, lazy, useMemo, useState } from 'react'
 import { addDays, format, isToday, min, startOfYear, subWeeks } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
@@ -21,7 +21,7 @@ import AbsenceBar from '../components/AbsenceBar'
 import AbsenceRequestForm from '../components/AbsenceRequestForm'
 import OvertimeForm from '../components/OvertimeForm'
 import PosteLegend from '../components/PosteLegend'
-import AutoplanModal from '../components/AutoplanModal'
+const AutoplanModal = lazy(() => import('../components/AutoplanModal'))
 import LeaveCounter from '../components/LeaveCounter'
 
 const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
@@ -361,6 +361,7 @@ export default function PlanningPage() {
       {teamLoading && <p className="text-sm text-brand-700/50">Chargement de l&apos;équipe…</p>}
 
       {autoplanOpen && (
+        <Suspense fallback={null}>
         <AutoplanModal
           weekStart={weekStart}
           team={visibleTeam}
@@ -371,6 +372,7 @@ export default function PlanningPage() {
           onClose={() => setAutoplanOpen(false)}
           onApplied={reloadShifts}
         />
+        </Suspense>
       )}
 
       {editing && (

@@ -1,12 +1,20 @@
-import type { ReactNode } from 'react'
+import { Suspense, lazy, type ReactNode } from 'react'
 import { Navigate, Route, BrowserRouter, Routes } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
 import LoginPage from './pages/LoginPage'
 import PlanningPage from './pages/PlanningPage'
-import TeamAdminPage from './pages/TeamAdminPage'
-import NewPasswordPage from './pages/NewPasswordPage'
-import HistoryPage from './pages/HistoryPage'
+
+// Pages chargées à la demande : le planning (page d'accueil) reste léger,
+// Équipe, Historique et la page de mot de passe ne sont téléchargées qu'à
+// leur première ouverture.
+const TeamAdminPage = lazy(() => import('./pages/TeamAdminPage'))
+const NewPasswordPage = lazy(() => import('./pages/NewPasswordPage'))
+const HistoryPage = lazy(() => import('./pages/HistoryPage'))
+
+function PageLoading() {
+  return <p className="py-10 text-center text-sm text-brand-700/50">Chargement…</p>
+}
 
 function Gate({ children }: { children: ReactNode }) {
   const { session, profile, loading, signOut } = useAuth()
@@ -57,6 +65,7 @@ export default function App() {
     <BrowserRouter>
       <AuthProvider>
         <Gate>
+          <Suspense fallback={<PageLoading />}>
           <Routes>
             <Route path="/nouveau-mot-de-passe" element={<NewPasswordPage />} />
             <Route element={<Layout />}>
@@ -81,6 +90,7 @@ export default function App() {
               <Route path="*" element={<Navigate to="/planning" replace />} />
             </Route>
           </Routes>
+          </Suspense>
         </Gate>
       </AuthProvider>
     </BrowserRouter>
