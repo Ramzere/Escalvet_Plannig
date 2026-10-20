@@ -73,6 +73,7 @@ export default function HoursSummary({
                   ? 'Absent(e) cette semaine'
                   : `${formatHours(wt.actualHours)} sur ${formatHours(wt.theoreticalHours)} prévues`}
                 {!wt.isAbsentWeek && wt.absentDays > 0 && ` (${wt.absentDays}j d'absence)`}
+                {!wt.isAbsentWeek && wt.holidayDays > 0 && ` (${wt.holidayDays} férié)`}
               </p>
               <div className="mt-1 flex items-center justify-between gap-2">
                 <DeltaBadge delta={wt.delta} />

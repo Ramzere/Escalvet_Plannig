@@ -95,6 +95,16 @@ describe('generateWeekPlan', () => {
   })
 })
 
+describe('jours fériés', () => {
+  it('ne planifie personne un jour férié et baisse la cible en conséquence', () => {
+    // Semaine du 9 novembre 2026 : mercredi 11 férié.
+    const r = run({ weekStart: '2026-11-09', options: { seed: 7, iterations: 8000, catchUpRate: 0 } })
+    expect(r.slots.some((s) => s.day === 2)).toBe(false)
+    expect(r.toShifts().some((s) => s.work_date === '2026-11-11')).toBe(false)
+    for (const p of r.people) expect(p.theoreticalHours).toBeCloseTo(35 * 5 / 6)
+  })
+})
+
 describe('postes', () => {
   it('met le chenil/chir sur la ligne A, l’accueil sur la B, et « seul » quand une personne est seule', () => {
     const r = run()

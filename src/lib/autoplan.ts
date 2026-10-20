@@ -25,12 +25,13 @@ import { addDays, addWeeks, format, parseISO, subWeeks } from 'date-fns'
 import type { Absence, Contract, OvertimeRequest, Period, Poste, Profile, Shift } from '../types'
 import {
   WORK_DAYS_PER_WEEK,
-  absentDaysInWeek,
   contractAt,
+  offDaysInWeek,
   projectedBalance,
   shiftHours,
   weekDays,
 } from './hours'
+import { isPublicHoliday } from './holidays'
 
 /** Un créneau horaire à pourvoir. `track` relie le matin et l'après-midi d'une même « ligne » (A ou B) pour former une journée. */
 export interface SlotTemplate {
@@ -202,9 +203,11 @@ function slotDuration(s: SlotTemplate): number {
 
 export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
   const opts: AutoplanOptions = { ...DEFAULT_OPTIONS, ...input.options }
-  const { weekStart, slots, people, contracts, absences, overtimeRequests, historyShifts } = input
+  const { weekStart, people, contracts, absences, overtimeRequests, historyShifts } = input
   const random = rng(opts.seed)
   const days = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
+  // Cabinet fermé les jours fériés : on retire ces créneaux du squelette.
+  const slots = input.slots.filter((s) => !isPublicHoliday(days[s.day]))
   const previousWeek = format(subWeeks(parseISO(weekStart), 1), 'yyyy-MM-dd')
   const n = slots.length
   const durations = slots.map(slotDuration)
@@ -223,16 +226,15 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
         )
     )
   )
-  const absentDays = people.map((p) =>
-    Math.min(WORK_DAYS_PER_WEEK, absentDaysInWeek(absences, p.id, weekStart))
-  )
+  const off = people.map((p) => offDaysInWeek(absences, p.id, weekStart))
+  const absentDays = off.map((o) => o.absentDays)
   const theoretical = people.map((p, i) => {
     const contract = contractAt(
       contracts.filter((c) => c.employee_id === p.id),
       weekStart
     )
     const full = contract?.weekly_hours ?? 0
-    return (full * (WORK_DAYS_PER_WEEK - absentDays[i])) / WORK_DAYS_PER_WEEK
+    return (full * (WORK_DAYS_PER_WEEK - off[i].offDays)) / WORK_DAYS_PER_WEEK
   })
   const cumulBefore = people.map(
     (p) =>

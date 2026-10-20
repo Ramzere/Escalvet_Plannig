@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { holidayDaysInWeek, offDaysInWeek } from './hours'
 import { formatHours, projectedBalance, shiftHours, weekTotals } from './hours'
 import type { Absence, Contract, OvertimeRequest, Shift } from '../types'
 
@@ -197,5 +198,25 @@ describe('projectedBalance — redémarre au 1er janvier et à chaque changement
     ]
     const projection = projectedBalance('clara', '2026-03-23', shifts, contracts, [])
     expect(projection.cumulativeDelta).toBeCloseTo(3, 5)
+  })
+})
+
+describe('jours fériés', () => {
+  it('réduit les heures théoriques de la semaine du 11 novembre', () => {
+    // Semaine du 9 au 14 novembre 2026 : mercredi 11 férié.
+    expect(holidayDaysInWeek('2026-11-09')).toBe(1)
+    const totals = weekTotals('clara', '2026-11-09', [], [
+      { id: 'c', employee_id: 'clara', label: 'CDI', contract_type: 'CDI', weekly_hours: 36, effective_from: '2026-01-01', effective_to: null },
+    ], [])
+    expect(totals.holidayDays).toBe(1)
+    expect(totals.theoreticalHours).toBeCloseTo(30) // 36 × 5/6
+  })
+
+  it('ne compte pas deux fois un férié pendant une absence', () => {
+    const absences = [
+      { id: 'a', employee_id: 'clara', start_date: '2026-11-09', end_date: '2026-11-14', reason: 'Congés', status: 'approved' as const, counts_as_leave: true },
+    ]
+    const o = offDaysInWeek(absences, 'clara', '2026-11-09')
+    expect(o).toEqual({ absentDays: 6, holidayDays: 1, offDays: 6 })
   })
 })

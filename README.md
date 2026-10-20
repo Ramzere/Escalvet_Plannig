@@ -171,6 +171,12 @@ gh repo create escalvet --private --source=. --push
   cette semaine-là. Le cumul affiché est la somme de ces écarts depuis la
   première semaine de janvier jusqu'à la semaine consultée — y compris pour
   une semaine future déjà planifiée (calcul prévisionnel).
+- **Jours fériés** : le cabinet est fermé les jours fériés français (fixes
+  et mobiles : Pâques, Ascension, Pentecôte). Ils sont calculés
+  automatiquement : la colonne est marquée « Férié · fermé » dans le
+  planning, les heures théoriques de la semaine sont réduites d'un sixième
+  par férié (comme un jour d'absence), le générateur n'y place personne, et
+  un férié pendant des congés n'est pas décompté du compteur.
 - **Semaines d'absence** : marquer une semaine "absente" pour quelqu'un
   (bouton dans le bandeau au-dessus du planning) exclut cette semaine du
   calcul, aussi bien côté réel que côté théorique — comme dans le planning

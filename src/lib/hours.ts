@@ -10,6 +10,7 @@ import {
   startOfYear,
 } from 'date-fns'
 import type { Absence, Contract, OvertimeRequest, Shift } from '../types'
+import { isPublicHoliday } from './holidays'
 
 /** Nombre de jours travaillés dans la semaine type du cabinet (lundi -> samedi). */
 export const WORK_DAYS_PER_WEEK = 6
@@ -72,6 +73,38 @@ export function absentDaysInWeek(
     .length
 }
 
+/** Nombre de jours fériés (lundi -> samedi) dans la semaine : le cabinet est fermé, personne ne travaille. */
+export function holidayDaysInWeek(weekStartIso: string): number {
+  return weekDays(weekStartIso).filter((d) => isPublicHoliday(format(d, 'yyyy-MM-dd'))).length
+}
+
+/**
+ * Jours de la semaine (lundi -> samedi) où l'employé ne travaille pas :
+ * absence validée ou jour férié, sans compter deux fois un férié pendant
+ * une absence.
+ */
+export function offDaysInWeek(
+  absences: Absence[],
+  employeeId: string,
+  weekStartIso: string
+): { absentDays: number; holidayDays: number; offDays: number } {
+  const days = weekDays(weekStartIso).map((d) => format(d, 'yyyy-MM-dd'))
+  const employeeAbsences = absences.filter(
+    (a) => a.employee_id === employeeId && a.status === 'approved'
+  )
+  let absentDays = 0
+  let holidayDays = 0
+  let offDays = 0
+  for (const day of days) {
+    const absent = employeeAbsences.some((a) => a.start_date <= day && day <= a.end_date)
+    const holiday = isPublicHoliday(day)
+    if (absent) absentDays++
+    if (holiday) holidayDays++
+    if (absent || holiday) offDays++
+  }
+  return { absentDays, holidayDays, offDays }
+}
+
 /** Durée d'une déclaration d'heures sup en heures décimales (ex: 1h30 -> 1.5). */
 export function overtimeHoursOf(o: Pick<OvertimeRequest, 'hours' | 'minutes'>): number {
   return o.hours + o.minutes / 60
@@ -99,6 +132,7 @@ export interface WeekTotals {
   delta: number
   isAbsentWeek: boolean
   absentDays: number
+  holidayDays: number
 }
 
 /** Total réel travaillé sur la semaine par un employé. */
@@ -115,8 +149,9 @@ export function actualHoursForWeek(
 
 /**
  * Calcule le solde d'heures d'un employé pour une semaine donnée, en tenant
- * compte du contrat en vigueur et des jours d'absence (les heures théoriques
- * sont réduites au prorata des jours d'absence dans la semaine).
+ * compte du contrat en vigueur, des jours d'absence et des jours fériés (les
+ * heures théoriques sont réduites au prorata des jours non travaillés dans
+ * la semaine).
  */
 export function weekTotals(
   employeeId: string,
@@ -126,14 +161,14 @@ export function weekTotals(
   absences: Absence[],
   overtimeRequests: OvertimeRequest[] = []
 ): WeekTotals {
-  const absentDays = Math.min(WORK_DAYS_PER_WEEK, absentDaysInWeek(absences, employeeId, weekStartIso))
+  const { absentDays, holidayDays, offDays } = offDaysInWeek(absences, employeeId, weekStartIso)
   const isAbsentWeek = absentDays >= WORK_DAYS_PER_WEEK
   const actualHours = actualHoursForWeek(shifts, employeeId, weekStartIso)
   const employeeContracts = contracts.filter((c) => c.employee_id === employeeId)
   const contract = contractAt(employeeContracts, weekStartIso)
   const fullWeeklyHours = contract?.weekly_hours ?? 0
   const theoreticalHours =
-    (fullWeeklyHours * (WORK_DAYS_PER_WEEK - absentDays)) / WORK_DAYS_PER_WEEK
+    (fullWeeklyHours * (WORK_DAYS_PER_WEEK - offDays)) / WORK_DAYS_PER_WEEK
   const approvedOvertime = approvedOvertimeForWeek(overtimeRequests, employeeId, weekStartIso)
   return {
     weekStart: weekStartIso,
@@ -143,6 +178,7 @@ export function weekTotals(
     delta: actualHours - theoreticalHours + approvedOvertime,
     isAbsentWeek,
     absentDays,
+    holidayDays,
   }
 }
 

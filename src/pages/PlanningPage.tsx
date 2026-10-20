@@ -11,6 +11,7 @@ import {
   useTeam,
 } from '../hooks/usePlanningData'
 import { weekDays, weekStartOf } from '../lib/hours'
+import { publicHolidayName } from '../lib/holidays'
 import type { Group, Period, Shift } from '../types'
 import WeekNavigator from '../components/WeekNavigator'
 import ShiftPill from '../components/ShiftPill'
@@ -122,26 +123,37 @@ export default function PlanningPage() {
                 <th className="w-24 border-b border-sand-200 bg-sand-50 px-3 py-2 text-left text-xs font-medium text-brand-700/70">
                   &nbsp;
                 </th>
-                {days.map((d, i) => (
-                  <th
-                    key={i}
-                    className={`w-40 border-b border-l px-3 py-2 text-left text-xs font-medium ${
-                      isToday(d)
-                        ? 'border-brand-200 bg-brand-100 text-brand-900'
-                        : 'border-sand-200 bg-sand-50 text-brand-900'
-                    }`}
-                  >
-                    {DAY_LABELS[i]}
-                    {isToday(d) && (
-                      <span className="ml-1.5 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                        Aujourd&apos;hui
+                {days.map((d, i) => {
+                  const holiday = publicHolidayName(format(d, 'yyyy-MM-dd'))
+                  return (
+                    <th
+                      key={i}
+                      className={`w-40 border-b border-l px-3 py-2 text-left text-xs font-medium ${
+                        isToday(d)
+                          ? 'border-brand-200 bg-brand-100 text-brand-900'
+                          : holiday
+                            ? 'border-sand-200 bg-sand-100 text-brand-700/60'
+                            : 'border-sand-200 bg-sand-50 text-brand-900'
+                      }`}
+                    >
+                      {DAY_LABELS[i]}
+                      {isToday(d) && (
+                        <span className="ml-1.5 rounded-full bg-brand-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                          Aujourd&apos;hui
+                        </span>
+                      )}
+                      {holiday && (
+                        <span className="ml-1.5 rounded-full bg-sand-300 px-1.5 py-0.5 text-[10px] font-semibold text-brand-800">
+                          Férié
+                        </span>
+                      )}
+                      <span className="block font-normal text-brand-700/60">
+                        {format(d, 'd MMM', { locale: fr })}
+                        {holiday && ` · ${holiday}`}
                       </span>
-                    )}
-                    <span className="block font-normal text-brand-700/60">
-                      {format(d, 'd MMM', { locale: fr })}
-                    </span>
-                  </th>
-                ))}
+                    </th>
+                  )
+                })}
               </tr>
             </thead>
             <tbody>
@@ -153,6 +165,14 @@ export default function PlanningPage() {
                   {days.map((d, i) => {
                     const iso = format(d, 'yyyy-MM-dd')
                     const dayShifts = shiftsFor(iso, period.key)
+                    const holiday = publicHolidayName(iso)
+                    if (holiday && dayShifts.length === 0) {
+                      return (
+                        <td key={i} className="border-b border-l border-sand-100 bg-sand-50 px-2 py-2">
+                          <p className="py-1.5 text-center text-xs text-brand-700/40">Fermé</p>
+                        </td>
+                      )
+                    }
                     return (
                       <td
                         key={i}
@@ -206,6 +226,7 @@ export default function PlanningPage() {
           {days.map((d, i) => {
             const iso = format(d, 'yyyy-MM-dd')
             const today = isToday(d)
+            const holiday = publicHolidayName(iso)
             return (
               <div
                 key={i}
@@ -228,10 +249,22 @@ export default function PlanningPage() {
                       Aujourd&apos;hui
                     </span>
                   )}
+                  {holiday && (
+                    <span className="rounded-full bg-sand-300 px-1.5 py-0.5 text-[10px] font-semibold text-brand-800">
+                      Férié · {holiday}
+                    </span>
+                  )}
                 </div>
                 <div className="divide-y divide-sand-100">
                   {PERIODS.map((period) => {
                     const dayShifts = shiftsFor(iso, period.key)
+                    if (holiday && dayShifts.length === 0) {
+                      return (
+                        <div key={period.key} className="px-3 py-2.5 text-center text-xs text-brand-700/40">
+                          Fermé
+                        </div>
+                      )
+                    }
                     return (
                       <div key={period.key} className="px-3 py-2.5">
                         <p className="mb-1.5 text-xs font-medium text-brand-700/70">

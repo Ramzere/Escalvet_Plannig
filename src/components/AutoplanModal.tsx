@@ -3,6 +3,7 @@ import { format, parseISO, subWeeks } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
 import { formatHours, weekDays } from '../lib/hours'
+import { publicHolidayName } from '../lib/holidays'
 import {
   DEFAULT_ASV_TEMPLATE,
   generateWeekPlan,
@@ -331,6 +332,9 @@ export default function AutoplanModal({
                           <span className="font-normal text-brand-700/50">
                             {format(parseISO(iso), 'd/MM')}
                           </span>
+                          {publicHolidayName(iso) && (
+                            <span className="block font-normal text-brand-700/50">Férié · fermé</span>
+                          )}
                         </th>
                       ))}
                     </tr>
