@@ -167,6 +167,16 @@ describe('demande d’absence en attente', () => {
   })
 })
 
+describe('première semaine de janvier', () => {
+  it('repart d’un cumul à zéro', () => {
+    const r = run({ weekStart: '2027-01-04', historyShifts: [], options: { seed: 7, iterations: 4000 } })
+    for (const p of r.people) {
+      expect(p.cumulBefore).toBe(0)
+      expect(p.targetHours).toBeCloseTo(p.theoreticalHours)
+    }
+  })
+})
+
 describe('templateFromWeek', () => {
   it('reprend les horaires d’une semaine en oubliant les personnes', () => {
     const shifts: Shift[] = [

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { addDays, format, isToday, startOfYear } from 'date-fns'
+import { addDays, format, isToday, min, startOfYear, subWeeks } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -42,7 +42,13 @@ export default function PlanningPage() {
   const [autoplanOpen, setAutoplanOpen] = useState(false)
 
   const days = weekDays(weekStart)
-  const rangeFrom = format(startOfYear(new Date(weekStart)), 'yyyy-MM-dd')
+  // Depuis le 1er janvier (cumul annuel), et au moins depuis la semaine
+  // précédente : début janvier, elle est sur l'année d'avant et sert de
+  // modèle au générateur (« mêmes horaires que la semaine précédente »).
+  const rangeFrom = format(
+    min([startOfYear(new Date(weekStart)), subWeeks(new Date(weekStart), 1)]),
+    'yyyy-MM-dd'
+  )
   const rangeTo = format(addDays(days[days.length - 1], 0), 'yyyy-MM-dd')
 
   const { team, loading: teamLoading } = useTeam()

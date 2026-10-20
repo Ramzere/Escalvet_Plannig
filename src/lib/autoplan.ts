@@ -251,10 +251,14 @@ function buildContext(input: AutoplanInput) {
     const full = contract?.weekly_hours ?? 0
     return (full * (WORK_DAYS_PER_WEEK - off[i].offDays)) / WORK_DAYS_PER_WEEK
   })
-  const cumulBefore = people.map(
-    (p) =>
-      projectedBalance(p.id, previousWeek, historyShifts, contracts, absences, overtimeRequests)
-        .cumulativeDelta
+  // Le cumul repart de zéro au 1er janvier : si la semaine précédente est
+  // sur l'année d'avant, on ne traîne rien.
+  const sameYear = previousWeek.slice(0, 4) === weekStart.slice(0, 4)
+  const cumulBefore = people.map((p) =>
+    sameYear
+      ? projectedBalance(p.id, previousWeek, historyShifts, contracts, absences, overtimeRequests)
+          .cumulativeDelta
+      : 0
   )
   const target = people.map((_, i) => {
     if (theoretical[i] <= 0) return 0
