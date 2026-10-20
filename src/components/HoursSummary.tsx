@@ -30,6 +30,7 @@ export default function HoursSummary({
   contracts,
   absences,
   overtimeRequests,
+  personal = false,
 }: {
   team: Profile[]
   weekStart: string
@@ -38,16 +39,22 @@ export default function HoursSummary({
   contracts: Contract[]
   absences: Absence[]
   overtimeRequests: OvertimeRequest[]
+  /** Vue employé : uniquement son propre solde (les compteurs des autres sont privés). */
+  personal?: boolean
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-sand-200 bg-white">
       <div className="border-b border-sand-200 px-4 py-3">
-        <h2 className="text-sm font-semibold text-brand-900">Solde d&apos;heures</h2>
+        <h2 className="text-sm font-semibold text-brand-900">
+          {personal ? 'Mon solde d’heures' : 'Solde d’heures'}
+        </h2>
         <p className="text-xs text-brand-700/60">
           Cette semaine et cumul prévisionnel depuis le 1er janvier
         </p>
       </div>
-      <div className="grid gap-px bg-sand-100 sm:grid-cols-2 lg:grid-cols-4">
+      <div
+        className={`grid gap-px bg-sand-100 ${personal ? '' : 'sm:grid-cols-2 lg:grid-cols-4'}`}
+      >
         {team.map((member) => {
           const wt = weekTotals(member.id, weekStart, shifts, contracts, absences, overtimeRequests)
           const projection = projectedBalance(
@@ -78,7 +85,7 @@ export default function HoursSummary({
         })}
         {team.length === 0 && (
           <p className="col-span-full bg-white px-4 py-6 text-center text-sm text-brand-700/60">
-            Personne dans ce groupe pour l&apos;instant.
+            {personal ? 'Aucun contrat actif pour vous.' : "Personne dans ce groupe pour l'instant."}
           </p>
         )}
       </div>

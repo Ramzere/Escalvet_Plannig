@@ -255,13 +255,14 @@ create policy "profiles_owner_delete" on public.profiles
 -- (l'insertion des profils se fait uniquement via le trigger handle_new_user)
 
 -- ---- contracts ----
+-- Chacun ne voit que ses propres contrats (heures hebdo = donnée perso) ;
+-- le propriétaire voit tout. Les créneaux restent visibles par groupe pour
+-- savoir avec qui on travaille, mais sans les contrats on ne peut pas
+-- recalculer le compteur d'heures des autres.
 drop policy if exists "contracts_select" on public.contracts;
 create policy "contracts_select" on public.contracts
   for select
-  using (
-    is_owner()
-    or employee_id in (select id from public.profiles where group_name = my_group())
-  );
+  using (is_owner() or employee_id = auth.uid());
 
 drop policy if exists "contracts_owner_write" on public.contracts;
 create policy "contracts_owner_write" on public.contracts

@@ -267,7 +267,8 @@ export default function PlanningPage() {
         {groupFilter === 'asv' && <PosteLegend />}
 
         <HoursSummary
-          team={visibleTeam}
+          team={isOwner ? visibleTeam : visibleTeam.filter((t) => t.id === profile?.id)}
+          personal={!isOwner}
           weekStart={weekStart}
           shifts={weekShifts}
           yearShifts={yearShifts}
