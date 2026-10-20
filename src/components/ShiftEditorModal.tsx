@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 import type { Period, Poste, Profile, Shift } from '../types'
 import { POSTE_SHORT_LABELS } from '../types'
 
@@ -87,7 +88,7 @@ export default function ShiftEditorModal({
 
     setSaving(false)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     onSaved()
@@ -101,7 +102,7 @@ export default function ShiftEditorModal({
     const { error } = await supabase.from('shifts').delete().eq('id', existing.id)
     setSaving(false)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     onSaved()

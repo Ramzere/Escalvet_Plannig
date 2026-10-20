@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { format, parseISO, subWeeks } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 import { formatHours, weekDays } from '../lib/hours'
 import { publicHolidayName } from '../lib/holidays'
 import {
@@ -167,7 +168,7 @@ export default function AutoplanModal({
         )
       if (delError) {
         setApplying(false)
-        setError(delError.message)
+        setError(frenchError(delError.message, 'Suppression des anciens créneaux impossible'))
         return
       }
     }
@@ -175,7 +176,7 @@ export default function AutoplanModal({
     const { error: insError } = await supabase.from('shifts').insert(rows)
     setApplying(false)
     if (insError) {
-      setError(insError.message)
+      setError(frenchError(insError.message, 'Enregistrement des créneaux impossible'))
       return
     }
     onApplied()

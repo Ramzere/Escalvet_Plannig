@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { formatDays, leaveSummary } from '../lib/leave'
 import type { Absence, LeaveBalance, Profile } from '../types'
 import ErrorBanner from './ErrorBanner'
+import { frenchError } from '../lib/errors'
 
 /**
  * Bilan des congés de toute l'équipe pour une année (vue propriétaire) :
@@ -58,7 +59,7 @@ export default function LeaveBalancePanel({
     )
     setSaving(null)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     onChanged()

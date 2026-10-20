@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { formatHours, overtimeHoursOf } from '../lib/hours'
 import type { OvertimeRequest, Profile } from '../types'
 import ErrorBanner from './ErrorBanner'
+import { frenchError } from '../lib/errors'
 
 export default function OvertimePendingPanel({
   team,
@@ -36,7 +37,7 @@ export default function OvertimePendingPanel({
       .eq('id', id)
     setBusy(null)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Décision non enregistrée'))
       return
     }
     onChanged()

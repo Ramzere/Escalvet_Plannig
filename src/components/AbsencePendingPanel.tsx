@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Absence, Profile } from '../types'
 import ErrorBanner from './ErrorBanner'
+import { frenchError } from '../lib/errors'
 
 export default function AbsencePendingPanel({
   team,
@@ -33,7 +34,7 @@ export default function AbsencePendingPanel({
       .eq('id', id)
     setBusy(null)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Décision non enregistrée'))
       return
     }
     onChanged()

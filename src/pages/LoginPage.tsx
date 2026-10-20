@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { supabase } from "../lib/supabase";
+import { frenchError } from "../lib/errors";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,7 +19,7 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(frenchError(error.message, "Envoi impossible"));
       return;
     }
     setSent(true);
@@ -34,11 +35,7 @@ export default function LoginPage() {
     });
     setLoading(false);
     if (error) {
-      setError(
-        error.message.includes("Invalid login credentials")
-          ? "Identifiants incorrects."
-          : error.message,
-      );
+      setError(frenchError(error.message, "Connexion impossible"));
     }
   }
 

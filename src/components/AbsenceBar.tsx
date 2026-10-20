@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 import type { Absence, Profile } from '../types'
 import { weekDays } from '../lib/hours'
 import { format } from 'date-fns'
@@ -82,7 +83,7 @@ export default function AbsenceBar({
           .insert({ employee_id, start_date, end_date, reason, status: 'approved', counts_as_leave })
     setBusy(false)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     ;(e.target as HTMLFormElement).reset()
@@ -122,7 +123,7 @@ export default function AbsenceBar({
     const { error } = await supabase.from('absences').delete().eq('id', id)
     setBusy(false)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     if (editing?.id === id) closeForm()

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { format, parseISO } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 import { useAbsences, useOvertimeRequests, useTeam } from '../hooks/usePlanningData'
 import { formatHours, overtimeHoursOf } from '../lib/hours'
 import { formatDays, leaveDaysOf } from '../lib/leave'
@@ -128,7 +129,7 @@ export default function HistoryPage() {
     const { error } = await action()
     setBusy(null)
     if (error) {
-      setError(error.message)
+      setError(frenchError(error.message, 'Modification impossible'))
       return
     }
     reload()

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 
 /**
  * Page atteinte depuis le lien reçu par email après « Mot de passe oublié ».
@@ -30,11 +31,7 @@ export default function NewPasswordPage() {
     const { error } = await supabase.auth.updateUser({ password })
     setSaving(false)
     if (error) {
-      setError(
-        error.message.includes('same password')
-          ? "C'est déjà ton mot de passe actuel, choisis-en un autre."
-          : error.message
-      )
+      setError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     setDone(true)

@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
 import { supabase } from '../lib/supabase'
+import { frenchError } from '../lib/errors'
 import { useAuth } from '../context/AuthContext'
 import {
   useAbsences,
@@ -55,7 +56,7 @@ export default function TeamAdminPage() {
     setProfileError(null)
     const { error } = await supabase.from('profiles').update({ [field]: value }).eq('id', selectedId)
     if (error) {
-      setProfileError(error.message)
+      setProfileError(frenchError(error.message, 'Enregistrement impossible'))
       return
     }
     reload()
@@ -120,7 +121,7 @@ export default function TeamAdminPage() {
       label,
     })
     if (error) {
-      setContractError(error.message)
+      setContractError(frenchError(error.message, 'Contrat non enregistré'))
       return
     }
     ;(e.target as HTMLFormElement).reset()
@@ -133,7 +134,7 @@ export default function TeamAdminPage() {
     setContractError(null)
     const { error } = await supabase.from('contracts').delete().eq('id', id)
     if (error) {
-      setContractError(error.message)
+      setContractError(frenchError(error.message, 'Suppression impossible'))
       return
     }
     reloadContracts()
