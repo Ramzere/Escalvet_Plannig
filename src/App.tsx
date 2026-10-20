@@ -6,6 +6,7 @@ import LoginPage from './pages/LoginPage'
 import PlanningPage from './pages/PlanningPage'
 import TeamAdminPage from './pages/TeamAdminPage'
 import NewPasswordPage from './pages/NewPasswordPage'
+import HistoryPage from './pages/HistoryPage'
 
 function Gate({ children }: { children: ReactNode }) {
   const { session, profile, loading, signOut } = useAuth()
@@ -66,6 +67,14 @@ export default function App() {
                 element={
                   <OwnerOnly>
                     <TeamAdminPage />
+                  </OwnerOnly>
+                }
+              />
+              <Route
+                path="/historique"
+                element={
+                  <OwnerOnly>
+                    <HistoryPage />
                   </OwnerOnly>
                 }
               />

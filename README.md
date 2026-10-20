@@ -212,6 +212,11 @@ gh repo create escalvet --private --source=. --push
   autre variante, ou changer directement la personne de n'importe quel
   créneau dans la grille (soldes et postes recalculés aussitôt, doublons
   bloqués, absences signalées), puis l'appliquer.
+- **Historique (propriétaire)** : onglet dédié avec toutes les heures sup
+  et absences de l'équipe. Barre de recherche (nom, motif, date, statut,
+  durée…), filtres par personne, année, type et statut ; deux sections
+  repliables groupées par mois, du plus récent au plus ancien, avec totaux.
+  Chaque ligne peut être revalidée, refusée ou supprimée.
 - **Compteur de congés** : chaque absence porte une case « décompter des
   congés » (cochée par défaut ; à décocher pour une école, un arrêt, une
   formation…). Les jours sont comptés en jours ouvrables (lundi → samedi).
