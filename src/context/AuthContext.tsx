@@ -37,10 +37,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+    // Supabase déconseille tout appel à la librairie à l'intérieur de ce
+    // rappel (risque d'interblocage : le client attend un verrou qu'il tient
+    // déjà, et l'appli reste sur « Chargement… »). On diffère donc le
+    // chargement du profil d'un tick, hors du rappel.
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       if (newSession) {
-        await loadProfile(newSession.user.id)
+        const userId = newSession.user.id
+        setTimeout(() => {
+          if (mounted) loadProfile(userId)
+        }, 0)
       } else {
         setProfile(null)
       }
