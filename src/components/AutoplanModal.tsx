@@ -10,10 +10,18 @@ import {
   type AutoplanResult,
   type SlotTemplate,
 } from '../lib/autoplan'
-import type { Absence, Contract, OvertimeRequest, Profile, Shift } from '../types'
+import type { Absence, Contract, OvertimeRequest, Poste, Profile, Shift } from '../types'
+import { POSTE_SHORT_LABELS } from '../types'
 import ErrorBanner from './ErrorBanner'
 
 const DAY_LABELS = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam']
+
+const POSTE_DOT: Record<Poste, string> = {
+  bleu: 'bg-poste-bleu',
+  violet: 'bg-poste-violet',
+  vert: 'bg-poste-vert',
+  seul: 'bg-poste-seul',
+}
 
 type TemplateSource = 'default' | 'previous'
 type Strength = 'off' | 'soft' | 'strong'
@@ -78,6 +86,7 @@ export default function AutoplanModal({
   const [error, setError] = useState<string | null>(null)
 
   const slots: SlotTemplate[] = source === 'previous' ? previousTemplate : DEFAULT_ASV_TEMPLATE
+  const withPostes = team.some((t) => t.group_name === 'asv')
 
   function generate(nextSeed = seed) {
     setError(null)
@@ -85,6 +94,7 @@ export default function AutoplanModal({
     const r = generateWeekPlan({
       weekStart,
       slots,
+      withPostes,
       people,
       contracts,
       absences,
@@ -220,7 +230,8 @@ export default function AutoplanModal({
                 <span>
                   Semaine type ASV
                   <span className="block text-xs text-brand-700/50">
-                    8h-13h / 8h15-12h30, 14h30-19h / 14h30-19h30, jeudi décalé, samedi matin
+                    8h-13h et 14h30-19h au chenil/chir, 8h15-12h30 et 14h30-19h30 à l&apos;accueil,
+                    jeudi décalé, samedi matin. Une personne seule = tous les postes.
                   </span>
                 </span>
               </label>
@@ -369,6 +380,14 @@ export default function AutoplanModal({
                                     <p className="opacity-70">
                                       {s.start}–{s.end}
                                     </p>
+                                    {result.postes[i] && (
+                                      <p className="mt-0.5 flex items-center gap-1 opacity-80">
+                                        <span
+                                          className={`inline-block h-2 w-2 rounded-full ${POSTE_DOT[result.postes[i]!]}`}
+                                        />
+                                        {POSTE_SHORT_LABELS[result.postes[i]!]}
+                                      </p>
+                                    )}
                                   </div>
                                 )
                               })}

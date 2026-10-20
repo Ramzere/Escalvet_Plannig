@@ -44,20 +44,21 @@ export interface SlotTemplate {
 
 /**
  * Semaine type des ASV, relevée sur les plannings papier : deux lignes par
- * demi-journée (A ouvre tôt, B ferme tard), jeudi décalé, samedi matin seul.
+ * demi-journée (A ouvre tôt = chenil/chirurgie en bleu, B ferme tard =
+ * accueil en violet), jeudi décalé, samedi matin seul (accueil + volante).
  */
 export const DEFAULT_ASV_TEMPLATE: SlotTemplate[] = (() => {
   const slots: SlotTemplate[] = []
   for (const day of [0, 1, 2, 4]) {
-    slots.push({ day, period: 'matin', start: '08:00', end: '13:00', poste: null, track: 'A' })
-    slots.push({ day, period: 'matin', start: '08:15', end: '12:30', poste: null, track: 'B' })
-    slots.push({ day, period: 'apres-midi', start: '14:30', end: '19:00', poste: null, track: 'A' })
-    slots.push({ day, period: 'apres-midi', start: '14:30', end: '19:30', poste: null, track: 'B' })
+    slots.push({ day, period: 'matin', start: '08:00', end: '13:00', poste: 'bleu', track: 'A' })
+    slots.push({ day, period: 'matin', start: '08:15', end: '12:30', poste: 'violet', track: 'B' })
+    slots.push({ day, period: 'apres-midi', start: '14:30', end: '19:00', poste: 'bleu', track: 'A' })
+    slots.push({ day, period: 'apres-midi', start: '14:30', end: '19:30', poste: 'violet', track: 'B' })
   }
-  slots.push({ day: 3, period: 'matin', start: '08:00', end: '14:00', poste: null, track: 'A' })
-  slots.push({ day: 3, period: 'matin', start: '08:15', end: '12:00', poste: null, track: 'B' })
-  slots.push({ day: 3, period: 'apres-midi', start: '15:00', end: '19:00', poste: null, track: 'A' })
-  slots.push({ day: 3, period: 'apres-midi', start: '14:00', end: '19:30', poste: null, track: 'B' })
+  slots.push({ day: 3, period: 'matin', start: '08:00', end: '14:00', poste: 'bleu', track: 'A' })
+  slots.push({ day: 3, period: 'matin', start: '08:15', end: '12:00', poste: 'violet', track: 'B' })
+  slots.push({ day: 3, period: 'apres-midi', start: '15:00', end: '19:00', poste: 'bleu', track: 'A' })
+  slots.push({ day: 3, period: 'apres-midi', start: '14:00', end: '19:30', poste: 'violet', track: 'B' })
   slots.push({ day: 5, period: 'matin', start: '08:30', end: '13:00', poste: 'violet', track: 'A' })
   slots.push({ day: 5, period: 'matin', start: '10:00', end: '14:00', poste: 'vert', track: 'B' })
   return slots
@@ -113,9 +114,40 @@ export const DEFAULT_OPTIONS: AutoplanOptions = {
   iterations: 20000,
 }
 
+/**
+ * Poste par défaut d'un créneau quand le squelette n'en précise pas : la
+ * ligne A (ouverture tôt) est au chenil/chirurgie, les autres à l'accueil.
+ */
+export function defaultPosteFor(slot: SlotTemplate): Poste {
+  if (slot.poste) return slot.poste
+  return slot.track === 'A' ? 'bleu' : 'violet'
+}
+
+/**
+ * Postes finaux d'une affectation : règle par défaut, et « seul » (tous les
+ * postes) quand une seule personne est planifiée sur la demi-journée.
+ * Retourne null partout pour les groupes sans notion de poste (vétérinaires).
+ */
+export function postesFor(
+  slots: SlotTemplate[],
+  assignment: (string | null)[],
+  withPostes: boolean
+): (Poste | null)[] {
+  if (!withPostes) return slots.map(() => null)
+  return slots.map((s, i) => {
+    if (assignment[i] === null) return defaultPosteFor(s)
+    const alone =
+      slots.filter((o, j) => o.day === s.day && o.period === s.period && assignment[j] !== null)
+        .length === 1
+    return alone ? 'seul' : defaultPosteFor(s)
+  })
+}
+
 export interface AutoplanInput {
   weekStart: string
   slots: SlotTemplate[]
+  /** false pour les vétérinaires (pas de poste). Par défaut true. */
+  withPostes?: boolean
   people: Profile[]
   contracts: Contract[]
   absences: Absence[]
@@ -143,6 +175,8 @@ export interface AutoplanResult {
   slots: SlotTemplate[]
   /** Pour chaque créneau (même index que `slots`), l'id de la personne ou null si personne n'a pu être placée. */
   assignment: (string | null)[]
+  /** Poste final de chaque créneau (règle par défaut + « seul »), même index que `slots`. */
+  postes: (Poste | null)[]
   people: PersonPlan[]
   unfilled: number
   score: number
@@ -230,9 +264,16 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
   // État dérivé maintenu à la main pour que l'évaluation reste rapide.
   const assignment: (number | null)[] = Array.from({ length: n }, () => null)
   const hours: number[] = Array.from({ length: P }, () => 0)
-  // perDay[p][d] = bitmask : 1 = matin, 2 = après-midi
-  const perDay: number[][] = people.map(() => Array.from({ length: WORK_DAYS_PER_WEEK }, () => 0))
-  const periodBit = (period: Period) => (period === 'matin' ? 1 : 2)
+  // count[p][d][0] = nb de créneaux le matin, [1] = l'après-midi. Un compteur
+  // (et non un bit) : lors de l'annulation d'un échange entre deux créneaux
+  // de la même demi-journée, on passe par un état transitoire où la personne
+  // tient les deux, et libérer l'un ne doit pas effacer l'autre.
+  const count: number[][][] = people.map(() =>
+    Array.from({ length: WORK_DAYS_PER_WEEK }, () => [0, 0])
+  )
+  const periodIdx = (period: Period) => (period === 'matin' ? 0 : 1)
+  const worksMorning = (p: number, d: number) => count[p][d][0] > 0
+  const worksAfternoon = (p: number, d: number) => count[p][d][1] > 0
 
   function scoreOf(): number {
     let s = 0
@@ -241,30 +282,32 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
       const dev = hours[p] - target[p]
       s += dev * dev
       for (let d = 0; d < WORK_DAYS_PER_WEEK; d++) {
-        const m = perDay[p][d]
-        if (dayHasBoth[d] && (m === 1 || m === 2)) s += opts.fullDayWeight
+        if (dayHasBoth[d] && worksMorning(p, d) !== worksAfternoon(p, d)) s += opts.fullDayWeight
       }
-      if (perDay[p][5] && workedLastSaturday[p]) s += opts.saturdayWeight
+      if ((worksMorning(p, 5) || worksAfternoon(p, 5)) && workedLastSaturday[p]) {
+        s += opts.saturdayWeight
+      }
     }
     return s
   }
 
   function place(si: number, pi: number | null) {
     const prev = assignment[si]
-    const bit = periodBit(slots[si].period)
+    const { day } = slots[si]
+    const k = periodIdx(slots[si].period)
     if (prev !== null) {
       hours[prev] -= durations[si]
-      perDay[prev][slots[si].day] &= ~bit
+      count[prev][day][k]--
     }
     assignment[si] = pi
     if (pi !== null) {
       hours[pi] += durations[si]
-      perDay[pi][slots[si].day] |= bit
+      count[pi][day][k]++
     }
   }
 
   const conflicts = (pi: number, si: number) =>
-    (perDay[pi][slots[si].day] & periodBit(slots[si].period)) !== 0
+    count[pi][slots[si].day][periodIdx(slots[si].period)] > 0
 
   // --- Point de départ glouton : journée par journée, ligne par ligne, on donne
   // la journée à la personne disponible qui a le plus d'heures à faire.
@@ -363,9 +406,10 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
     let fullDays = 0
     let halfDays = 0
     for (let d = 0; d < WORK_DAYS_PER_WEEK; d++) {
-      const m = perDay[i][d]
-      if (m === 3) fullDays++
-      else if (m !== 0 && dayHasBoth[d]) halfDays++
+      const m = worksMorning(i, d)
+      const a = worksAfternoon(i, d)
+      if (m && a) fullDays++
+      else if ((m || a) && dayHasBoth[d]) halfDays++
     }
     const delta = hours[i] - theoretical[i]
     return {
@@ -378,15 +422,17 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
       fullDays,
       halfDays,
       absentDays: absentDays[i],
-      worksSaturday: perDay[i][5] !== 0,
+      worksSaturday: worksMorning(i, 5) || worksAfternoon(i, 5),
     }
   })
 
   const assignmentIds = assignment.map((pi) => (pi === null ? null : people[pi].id))
+  const postes = postesFor(slots, assignmentIds, input.withPostes ?? true)
   return {
     weekStart,
     slots,
     assignment: assignmentIds,
+    postes,
     people: result,
     unfilled: assignmentIds.filter((a) => a === null).length,
     score: bestScore,
@@ -401,7 +447,7 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
             period: s.period,
             start_time: s.start,
             end_time: s.end,
-            poste: s.poste,
+            poste: postes[i],
             note: null,
           },
         ]

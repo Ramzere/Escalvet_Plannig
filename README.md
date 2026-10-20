@@ -185,6 +185,10 @@ gh repo create escalvet --private --source=. --push
   cumul annuel : qui est en déficit reçoit un peu plus d'heures), privilégie
   fortement les journées entières plutôt que les demi-journées isolées, et
   évite de redonner le samedi à la même personne deux semaines de suite.
+  Les postes suivent la règle habituelle : l'ouverture tôt (8h-13h, 14h30-19h)
+  au chenil/chirurgie (bleu), la fermeture tard (8h15-12h30, 14h30-19h30) à
+  l'accueil (violet), et « seul » (tous les postes) quand une personne est
+  seule sur la demi-journée.
   La proposition s'affiche avec le solde de chacune ; on peut demander une
   autre variante, puis l'appliquer et retoucher les créneaux à la main.
 - **Qui voit quoi** : chacun voit les créneaux et les absences validées de

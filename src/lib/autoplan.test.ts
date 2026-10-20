@@ -95,6 +95,30 @@ describe('generateWeekPlan', () => {
   })
 })
 
+describe('postes', () => {
+  it('met le chenil/chir sur la ligne A, l’accueil sur la B, et « seul » quand une personne est seule', () => {
+    const r = run()
+    r.slots.forEach((s, i) => {
+      if (s.day === 5) return // samedi : postes fixés par la semaine type (accueil + volante)
+      expect(r.postes[i]).toBe(s.track === 'A' ? 'bleu' : 'violet')
+    })
+    const shifts = r.toShifts()
+    expect(shifts.every((s) => s.poste !== null)).toBe(true)
+
+    // Une seule personne disponible : elle est « seule » sur chaque demi-journée.
+    const solo = run({ people: [team[0]], contracts: [contracts[0]] })
+    solo.slots.forEach((_, i) => {
+      if (solo.assignment[i] !== null) expect(solo.postes[i]).toBe('seul')
+    })
+  })
+
+  it('ne met aucun poste pour les vétérinaires', () => {
+    const r = run({ withPostes: false })
+    expect(r.postes.every((p) => p === null)).toBe(true)
+    expect(r.toShifts().every((s) => s.poste === null)).toBe(true)
+  })
+})
+
 describe('templateFromWeek', () => {
   it('reprend les horaires d’une semaine en oubliant les personnes', () => {
     const shifts: Shift[] = [
