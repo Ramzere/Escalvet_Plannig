@@ -97,6 +97,22 @@ semaine) de la personne.
    fonction n'est pas déployée, le bouton affiche une erreur explicite et la
    désactivation reste possible.
 
+### Importer un planning papier en une fois
+
+Plutôt que de saisir chaque créneau à la main, décris le mois dans un fichier
+JSON (voir `data/planning-2026-10.json` comme modèle : prénoms, dates,
+horaires, absences) puis lance, avec les identifiants du compte propriétaire :
+
+```bash
+OWNER_EMAIL=toi@cabinet.fr OWNER_PASSWORD='...' node scripts/import-planning.mjs data/planning-2026-10.json --dry-run
+OWNER_EMAIL=toi@cabinet.fr OWNER_PASSWORD='...' node scripts/import-planning.mjs data/planning-2026-10.json
+```
+
+`--dry-run` montre ce qui serait fait sans rien écrire. Un créneau déjà
+présent pour la même personne, la même date et la même demi-journée est
+ignoré ; `--replace` efface d'abord les créneaux de ces personnes sur la
+période du fichier pour repartir du papier.
+
 ## 3. Lancer l'application en local
 
 ```bash
