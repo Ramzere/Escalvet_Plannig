@@ -49,11 +49,19 @@ const from = dates.reduce((a, b) => (a < b ? a : b))
 const to = dates.reduce((a, b) => (a > b ? a : b))
 
 const supabase = createClient(url, anonKey, { auth: { persistSession: false } })
-const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+const { data: auth, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 if (authError) fail(`Connexion impossible : ${authError.message}`)
 
-const { data: me } = await supabase.from('profiles').select('id, is_owner').single()
-if (!me?.is_owner) fail("Ce compte n'est pas propriétaire : la RLS refusera l'écriture.")
+const { data: me, error: meError } = await supabase
+  .from('profiles')
+  .select('id, full_name, is_owner, active')
+  .eq('id', auth.user.id)
+  .single()
+if (meError) fail(`Profil introuvable : ${meError.message}`)
+if (!me.is_owner || !me.active) {
+  fail(`Le compte ${me.full_name} (${email}) n'est pas propriétaire actif : la RLS refusera l'écriture.`)
+}
+console.log(`Connecté en tant que ${me.full_name} (propriétaire).`)
 
 // ---- Résolution des prénoms → profils ---------------------------------------
 const { data: team, error: teamError } = await supabase
