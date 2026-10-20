@@ -196,7 +196,9 @@ gh repo create escalvet --private --source=. --push
   l'accueil (violet), et « seul » (tous les postes) quand une personne est
   seule sur la demi-journée.
   La proposition s'affiche avec le solde de chacune ; on peut demander une
-  autre variante, puis l'appliquer et retoucher les créneaux à la main.
+  autre variante, ou changer directement la personne de n'importe quel
+  créneau dans la grille (soldes et postes recalculés aussitôt, doublons
+  bloqués, absences signalées), puis l'appliquer.
 - **Compteur de congés** : chaque absence porte une case « décompter des
   congés » (cochée par défaut ; à décocher pour une école, un arrêt, une
   formation…). Les jours sont comptés en jours ouvrables (lundi → samedi).

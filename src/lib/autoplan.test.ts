@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEFAULT_ASV_TEMPLATE, generateWeekPlan, templateFromWeek } from './autoplan'
+import { DEFAULT_ASV_TEMPLATE, evaluatePlan, generateWeekPlan, templateFromWeek } from './autoplan'
 import type { Absence, Contract, Profile, Shift } from '../types'
 
 const WEEK = '2026-11-02' // lundi
@@ -126,6 +126,32 @@ describe('postes', () => {
     const r = run({ withPostes: false })
     expect(r.postes.every((p) => p === null)).toBe(true)
     expect(r.toShifts().every((s) => s.poste === null)).toBe(true)
+  })
+})
+
+describe('evaluatePlan (modification à la main)', () => {
+  it('recalcule les soldes et signale doublons et absences', () => {
+    const r = run({ options: { seed: 7, iterations: 8000, catchUpRate: 0 } })
+    const input = {
+      weekStart: WEEK, slots: DEFAULT_ASV_TEMPLATE, people: team, contracts,
+      absences: [{ id: 'x', employee_id: 'b', start_date: '2026-11-02', end_date: '2026-11-02', reason: 'CP', status: 'approved' as const, counts_as_leave: true }],
+      overtimeRequests: [], historyShifts: [],
+    }
+    // Lundi matin : on met la même personne sur les deux lignes, et Emilie (absente) l'après-midi.
+    const edited = [...r.assignment]
+    const mA = r.slots.findIndex((s) => s.day === 0 && s.period === 'matin' && s.track === 'A')
+    const mB = r.slots.findIndex((s) => s.day === 0 && s.period === 'matin' && s.track === 'B')
+    const aA = r.slots.findIndex((s) => s.day === 0 && s.period === 'apres-midi' && s.track === 'A')
+    edited[mA] = 'a'
+    edited[mB] = 'a'
+    edited[aA] = 'b'
+    const e = evaluatePlan(input, r.slots, edited)
+    expect(e.conflicts.sort()).toEqual([mA, mB].sort())
+    expect(e.unavailable).toEqual([aA])
+    expect(e.postes[mA]).toBe('bleu') // deux créneaux occupés : pas « seul »
+    const clara = e.people.find((p) => p.employeeId === 'a')!
+    expect(clara.hours).toBeGreaterThan(0)
+    expect(e.toShifts().length).toBe(edited.filter((x) => x !== null).length)
   })
 })
 

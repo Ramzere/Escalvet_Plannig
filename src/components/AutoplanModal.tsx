@@ -6,8 +6,10 @@ import { formatHours, weekDays } from '../lib/hours'
 import { publicHolidayName } from '../lib/holidays'
 import {
   DEFAULT_ASV_TEMPLATE,
+  evaluatePlan,
   generateWeekPlan,
   templateFromWeek,
+  type AutoplanInput,
   type AutoplanResult,
   type SlotTemplate,
 } from '../lib/autoplan'
@@ -89,14 +91,12 @@ export default function AutoplanModal({
   const slots: SlotTemplate[] = source === 'previous' ? previousTemplate : DEFAULT_ASV_TEMPLATE
   const withPostes = team.some((t) => t.group_name === 'asv')
 
-  function generate(nextSeed = seed) {
-    setError(null)
-    const people = team.filter((t) => selected.has(t.id))
-    const r = generateWeekPlan({
+  function buildInput(nextSeed: number): AutoplanInput {
+    return {
       weekStart,
       slots,
       withPostes,
-      people,
+      people: team.filter((t) => selected.has(t.id)),
       contracts,
       absences,
       overtimeRequests,
@@ -106,13 +106,39 @@ export default function AutoplanModal({
         fullDayWeight: FULL_DAY_WEIGHT[fullDays],
         catchUpRate: CATCH_UP_RATE[catchUp],
       },
-    })
-    setSeed(nextSeed)
-    setResult(r)
+    }
   }
+
+  function generate(nextSeed = seed) {
+    setError(null)
+    setSeed(nextSeed)
+    setResult(generateWeekPlan(buildInput(nextSeed)))
+  }
+
+  /** Modification à la main d'un créneau : on réévalue soldes, postes et conflits. */
+  function assign(slotIndex: number, employeeId: string | null) {
+    if (!result) return
+    const edited = [...result.assignment]
+    edited[slotIndex] = employeeId
+    setResult(evaluatePlan(buildInput(seed), result.slots, edited))
+  }
+
+  const hasConflicts = !!result && result.conflicts.length > 0
+  const isAbsentOn = (employeeId: string, dayIso: string) =>
+    absences.some(
+      (a) =>
+        a.employee_id === employeeId &&
+        a.status === 'approved' &&
+        a.start_date <= dayIso &&
+        dayIso <= a.end_date
+    )
 
   async function apply() {
     if (!result) return
+    if (hasConflicts) {
+      setError('Une personne est placée deux fois sur la même demi-journée : corrige avant d’appliquer.')
+      return
+    }
     if (
       weekShifts.length > 0 &&
       !window.confirm(
@@ -314,10 +340,26 @@ export default function AutoplanModal({
 
           {result && (
             <>
+              <p className="text-xs text-brand-700/60">
+                Tu peux changer la personne de n&apos;importe quel créneau directement dans la
+                grille : les soldes et les postes se recalculent aussitôt.
+              </p>
               {result.unfilled > 0 && (
                 <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  {result.unfilled} créneau(x) n&apos;ont pas pu être pourvus (personne de
-                  disponible). Ils apparaissent en « — » et resteront à compléter à la main.
+                  {result.unfilled} créneau(x) sans personne. Choisis quelqu&apos;un dans la grille
+                  ou laisse « — » pour les compléter plus tard.
+                </p>
+              )}
+              {hasConflicts && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                  Une personne est placée deux fois sur la même demi-journée (cases rouges).
+                  Corrige avant d&apos;appliquer.
+                </p>
+              )}
+              {result.unavailable.length > 0 && !hasConflicts && (
+                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
+                  Attention : une personne est placée un jour où elle est absente (cases rouges).
+                  Tu peux quand même appliquer si c&apos;est voulu.
                 </p>
               )}
 
@@ -368,19 +410,46 @@ export default function AutoplanModal({
                                       o.period === otherPeriod &&
                                       result.assignment[j] === who
                                   )
+                                const conflict = result.conflicts.includes(i)
+                                const absent = result.unavailable.includes(i)
+                                const style = conflict
+                                  ? 'border-red-400 bg-red-50 text-red-800'
+                                  : who === null
+                                    ? 'border-dashed border-red-300 bg-red-50 text-red-700'
+                                    : absent
+                                      ? 'border-red-300 bg-red-50 text-red-800'
+                                      : isolated
+                                        ? 'border-amber-300 bg-amber-50 text-amber-900'
+                                        : 'border-sand-200 bg-sand-50 text-brand-900'
+                                const title = conflict
+                                  ? 'Déjà placée sur cette demi-journée'
+                                  : absent
+                                    ? 'Absente ce jour-là'
+                                    : isolated
+                                      ? 'Demi-journée isolée'
+                                      : undefined
                                 return (
                                   <div
                                     key={track}
-                                    className={`rounded-md border px-1.5 py-1 ${
-                                      who === null
-                                        ? 'border-dashed border-red-300 bg-red-50 text-red-700'
-                                        : isolated
-                                          ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                          : 'border-sand-200 bg-sand-50 text-brand-900'
-                                    }`}
-                                    title={isolated ? 'Demi-journée isolée' : undefined}
+                                    className={`rounded-md border px-1.5 py-1 ${style}`}
+                                    title={title}
                                   >
-                                    <p className="font-semibold">{nameOf(who)}</p>
+                                    <select
+                                      value={who ?? ''}
+                                      onChange={(e) => assign(i, e.target.value || null)}
+                                      className="w-full bg-transparent font-semibold outline-none"
+                                      aria-label={`${DAY_LABELS[d]} ${period} ${s.start}-${s.end}`}
+                                    >
+                                      <option value="">—</option>
+                                      {team
+                                        .filter((t) => selected.has(t.id) || t.id === who)
+                                        .map((t) => (
+                                          <option key={t.id} value={t.id}>
+                                            {t.full_name}
+                                            {isAbsentOn(t.id, days[d]) ? ' (absente)' : ''}
+                                          </option>
+                                        ))}
+                                    </select>
                                     <p className="opacity-70">
                                       {s.start}–{s.end}
                                     </p>
@@ -438,7 +507,7 @@ export default function AutoplanModal({
                 </button>
                 <button
                   onClick={apply}
-                  disabled={applying}
+                  disabled={applying || hasConflicts}
                   className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-60"
                 >
                   {applying ? 'Application…' : 'Appliquer cette proposition'}

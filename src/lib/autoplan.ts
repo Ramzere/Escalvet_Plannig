@@ -180,6 +180,10 @@ export interface AutoplanResult {
   postes: (Poste | null)[]
   people: PersonPlan[]
   unfilled: number
+  /** Index des créneaux où une personne est placée deux fois sur la même demi-journée. */
+  conflicts: number[]
+  /** Index des créneaux où la personne placée est absente ce jour-là. */
+  unavailable: number[]
   score: number
   /** Créneaux prêts à être insérés dans `shifts`. */
   toShifts: () => Omit<Shift, 'id'>[]
@@ -201,19 +205,17 @@ function slotDuration(s: SlotTemplate): number {
   return shiftHours({ start_time: s.start, end_time: s.end })
 }
 
-export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
+/** Tout ce qui se déduit des entrées avant de chercher une affectation. */
+function buildContext(input: AutoplanInput) {
   const opts: AutoplanOptions = { ...DEFAULT_OPTIONS, ...input.options }
   const { weekStart, people, contracts, absences, overtimeRequests, historyShifts } = input
-  const random = rng(opts.seed)
   const days = weekDays(weekStart).map((d) => format(d, 'yyyy-MM-dd'))
   // Cabinet fermé les jours fériés : on retire ces créneaux du squelette.
   const slots = input.slots.filter((s) => !isPublicHoliday(days[s.day]))
   const previousWeek = format(subWeeks(parseISO(weekStart), 1), 'yyyy-MM-dd')
-  const n = slots.length
   const durations = slots.map(slotDuration)
 
   // --- Données par personne -------------------------------------------------
-  const P = people.length
   const available: boolean[][] = people.map((p) =>
     days.map(
       (iso) =>
@@ -253,14 +255,133 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
   const workedLastSaturday = people.map((p) =>
     historyShifts.some((s) => s.employee_id === p.id && s.work_date === lastSaturday)
   )
-  const canTake = (pi: number, si: number) => theoretical[pi] > 0 && available[pi][slots[si].day]
-
   // Jours où le squelette propose les deux demi-journées : seuls ceux-là
   // peuvent donner lieu à une « demi-journée isolée ».
   const dayHasBoth = Array.from({ length: WORK_DAYS_PER_WEEK }, (_, d) => {
     const periods = new Set(slots.filter((s) => s.day === d).map((s) => s.period))
     return periods.size === 2
   })
+
+  return {
+    opts,
+    weekStart,
+    days,
+    slots,
+    durations,
+    people,
+    available,
+    absentDays,
+    theoretical,
+    target,
+    cumulBefore,
+    workedLastSaturday,
+    dayHasBoth,
+    withPostes: input.withPostes ?? true,
+  }
+}
+
+type Context = ReturnType<typeof buildContext>
+
+const periodIdx = (period: Period) => (period === 'matin' ? 0 : 1)
+
+/** Construit le résultat (soldes, postes, conflits) pour une affectation donnée. */
+function buildResult(ctx: Context, assignmentIds: (string | null)[], score: number): AutoplanResult {
+  const { slots, days, people, durations, theoretical, target, cumulBefore, absentDays, dayHasBoth } = ctx
+  const index = new Map(people.map((p, i) => [p.id, i]))
+  const hours = people.map(() => 0)
+  const count = people.map(() => Array.from({ length: WORK_DAYS_PER_WEEK }, () => [0, 0]))
+  const conflicts: number[] = []
+  const unavailable: number[] = []
+
+  slots.forEach((s, i) => {
+    const id = assignmentIds[i]
+    if (id === null) return
+    const pi = index.get(id)
+    if (pi === undefined) return
+    hours[pi] += durations[i]
+    count[pi][s.day][periodIdx(s.period)]++
+    if (!ctx.available[pi][s.day]) unavailable.push(i)
+  })
+  slots.forEach((s, i) => {
+    const id = assignmentIds[i]
+    const pi = id === null ? undefined : index.get(id)
+    if (pi !== undefined && count[pi][s.day][periodIdx(s.period)] > 1) conflicts.push(i)
+  })
+
+  const result: PersonPlan[] = people.map((p, i) => {
+    let fullDays = 0
+    let halfDays = 0
+    for (let d = 0; d < WORK_DAYS_PER_WEEK; d++) {
+      const m = count[i][d][0] > 0
+      const a = count[i][d][1] > 0
+      if (m && a) fullDays++
+      else if ((m || a) && dayHasBoth[d]) halfDays++
+    }
+    const delta = hours[i] - theoretical[i]
+    return {
+      employeeId: p.id,
+      hours: hours[i],
+      theoreticalHours: theoretical[i],
+      targetHours: target[i],
+      cumulBefore: cumulBefore[i],
+      cumulAfter: cumulBefore[i] + delta,
+      fullDays,
+      halfDays,
+      absentDays: absentDays[i],
+      worksSaturday: count[i][5][0] > 0 || count[i][5][1] > 0,
+    }
+  })
+
+  const postes = postesFor(slots, assignmentIds, ctx.withPostes)
+  return {
+    weekStart: ctx.weekStart,
+    slots,
+    assignment: assignmentIds,
+    postes,
+    people: result,
+    unfilled: assignmentIds.filter((a) => a === null).length,
+    conflicts,
+    unavailable,
+    score,
+    toShifts: () =>
+      slots.flatMap((s, i) => {
+        const employee_id = assignmentIds[i]
+        if (!employee_id) return []
+        return [
+          {
+            employee_id,
+            work_date: days[s.day],
+            period: s.period,
+            start_time: s.start,
+            end_time: s.end,
+            poste: postes[i],
+            note: null,
+          },
+        ]
+      }),
+  }
+}
+
+/**
+ * Réévalue une affectation modifiée à la main (soldes, postes, conflits).
+ * `slots` doit être celui d'un résultat précédent (déjà sans les fériés).
+ */
+export function evaluatePlan(
+  input: AutoplanInput,
+  slots: SlotTemplate[],
+  assignmentIds: (string | null)[]
+): AutoplanResult {
+  const ctx = buildContext({ ...input, slots })
+  return buildResult(ctx, assignmentIds, Number.NaN)
+}
+
+export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
+  const ctx = buildContext(input)
+  const { opts, slots, durations, people, available, theoretical, target, workedLastSaturday, dayHasBoth } = ctx
+  const random = rng(opts.seed)
+  const n = slots.length
+  const P = people.length
+  const canTake = (pi: number, si: number) => theoretical[pi] > 0 && available[pi][slots[si].day]
 
   // --- Score ------------------------------------------------------------------
   // État dérivé maintenu à la main pour que l'évaluation reste rapide.
@@ -273,7 +394,6 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
   const count: number[][][] = people.map(() =>
     Array.from({ length: WORK_DAYS_PER_WEEK }, () => [0, 0])
   )
-  const periodIdx = (period: Period) => (period === 'matin' ? 0 : 1)
   const worksMorning = (p: number, d: number) => count[p][d][0] > 0
   const worksAfternoon = (p: number, d: number) => count[p][d][1] > 0
 
@@ -399,62 +519,8 @@ export function generateWeekPlan(input: AutoplanInput): AutoplanResult {
     }
   }
 
-  // Remet le meilleur état trouvé.
-  for (let i = 0; i < n; i++) place(i, null)
-  bestAssignment.forEach((pi, i) => place(i, pi))
-
-  // --- Résultat -----------------------------------------------------------------
-  const result: PersonPlan[] = people.map((p, i) => {
-    let fullDays = 0
-    let halfDays = 0
-    for (let d = 0; d < WORK_DAYS_PER_WEEK; d++) {
-      const m = worksMorning(i, d)
-      const a = worksAfternoon(i, d)
-      if (m && a) fullDays++
-      else if ((m || a) && dayHasBoth[d]) halfDays++
-    }
-    const delta = hours[i] - theoretical[i]
-    return {
-      employeeId: p.id,
-      hours: hours[i],
-      theoreticalHours: theoretical[i],
-      targetHours: target[i],
-      cumulBefore: cumulBefore[i],
-      cumulAfter: cumulBefore[i] + delta,
-      fullDays,
-      halfDays,
-      absentDays: absentDays[i],
-      worksSaturday: worksMorning(i, 5) || worksAfternoon(i, 5),
-    }
-  })
-
-  const assignmentIds = assignment.map((pi) => (pi === null ? null : people[pi].id))
-  const postes = postesFor(slots, assignmentIds, input.withPostes ?? true)
-  return {
-    weekStart,
-    slots,
-    assignment: assignmentIds,
-    postes,
-    people: result,
-    unfilled: assignmentIds.filter((a) => a === null).length,
-    score: bestScore,
-    toShifts: () =>
-      slots.flatMap((s, i) => {
-        const employee_id = assignmentIds[i]
-        if (!employee_id) return []
-        return [
-          {
-            employee_id,
-            work_date: days[s.day],
-            period: s.period,
-            start_time: s.start,
-            end_time: s.end,
-            poste: postes[i],
-            note: null,
-          },
-        ]
-      }),
-  }
+  const assignmentIds = bestAssignment.map((pi) => (pi === null ? null : people[pi].id))
+  return buildResult(ctx, assignmentIds, bestScore)
 }
 
 /** Lundi de la semaine suivante, pratique pour enchaîner les générations. */
