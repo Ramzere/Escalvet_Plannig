@@ -76,6 +76,19 @@ qui gère ça), puis va dans l'onglet **Équipe** de l'application pour
 renseigner le nom, le groupe (ASV / Vétérinaire) et le contrat (heures par
 semaine) de la personne.
 
+### Mot de passe oublié
+
+Le lien « Mot de passe oublié ? » de la page de connexion envoie un email
+avec un lien vers `/nouveau-mot-de-passe`. Pour que Supabase accepte cette
+redirection, ajoute une fois dans **Authentication > URL Configuration** :
+
+- **Site URL** : l'adresse du site (ex. `https://escalvet.netlify.app`)
+- **Redirect URLs** : `https://escalvet.netlify.app/nouveau-mot-de-passe`
+  et, pour le développement, `http://localhost:5173/nouveau-mot-de-passe`
+
+Le texte de l'email se personnalise dans **Authentication > Email Templates
+> Reset password** (il est en anglais par défaut).
+
 ### Départ d'un·e employé·e
 
 1. **Désactiver le compte** (recommandé) : onglet **Équipe**, sélectionne la
