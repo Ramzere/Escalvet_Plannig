@@ -135,6 +135,9 @@ export default function AbsenceRequestForm({
                 {!a.counts_as_leave && (
                   <span className="text-brand-700/40"> · hors congés</span>
                 )}
+                {a.admin_note && (
+                  <p className="text-xs italic text-brand-700/60">Réponse : {a.admin_note}</p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={a.status} />

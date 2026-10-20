@@ -14,6 +14,7 @@ export default function AbsencePendingPanel({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<Record<string, string>>({})
   const pending = requests
     .filter((a) => a.status === 'pending')
     .sort((a, b) => (a.start_date < b.start_date ? -1 : 1))
@@ -25,9 +26,10 @@ export default function AbsencePendingPanel({
   async function decide(id: string, status: 'approved' | 'rejected') {
     setBusy(id)
     setError(null)
+    const admin_note = notes[id]?.trim() || null
     const { error } = await supabase
       .from('absences')
-      .update({ status, decided_at: new Date().toISOString() })
+      .update({ status, admin_note, decided_at: new Date().toISOString() })
       .eq('id', id)
     setBusy(null)
     if (error) {
@@ -74,7 +76,13 @@ export default function AbsencePendingPanel({
                 {a.counts_as_leave ? 'décompté des congés' : 'hors congés (école, arrêt…)'}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={notes[a.id] ?? ''}
+                onChange={(e) => setNotes((n) => ({ ...n, [a.id]: e.target.value }))}
+                placeholder="Message (optionnel)"
+                className="w-44 rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+              />
               <button
                 onClick={() => decide(a.id, 'approved')}
                 disabled={busy === a.id}

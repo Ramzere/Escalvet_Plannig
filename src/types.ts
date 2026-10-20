@@ -43,6 +43,8 @@ export interface Absence {
   status: AbsenceStatus
   /** true = consomme des jours de congés (par opposition à école, arrêt, formation…). */
   counts_as_leave: boolean
+  /** Message du propriétaire à la validation / au refus. */
+  admin_note?: string | null
 }
 
 export interface LeaveBalance {

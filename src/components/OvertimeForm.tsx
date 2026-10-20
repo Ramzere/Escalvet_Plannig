@@ -139,6 +139,9 @@ export default function OvertimeForm({
                 </span>{' '}
                 <span className="text-brand-700/70">+{formatHours(overtimeHoursOf(r))}</span>
                 {r.note && <span className="text-brand-700/50"> · {r.note}</span>}
+                {r.admin_note && (
+                  <p className="text-xs italic text-brand-700/60">Réponse : {r.admin_note}</p>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={r.status} />

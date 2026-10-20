@@ -100,6 +100,7 @@ export default function HistoryPage() {
             a.reason,
             STATUS_WORDS[a.status],
             a.counts_as_leave ? 'congés' : 'hors congés',
+            a.admin_note,
             dateLabel(a.start_date),
             dateLabel(a.end_date),
             a.start_date,
@@ -392,6 +393,7 @@ export default function HistoryPage() {
                             {a.reason}
                             {' · '}
                             {a.counts_as_leave ? 'décompté des congés' : 'hors congés'}
+                            {a.admin_note && <span className="italic"> · réponse : {a.admin_note}</span>}
                           </p>
                         </div>
                         <div className="flex items-center gap-2">

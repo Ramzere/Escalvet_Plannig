@@ -71,7 +71,7 @@ export function useAbsences() {
     setLoading(true)
     const { data, error } = await supabase
       .from('absences')
-      .select('id, employee_id, start_date, end_date, reason, status, counts_as_leave')
+      .select('id, employee_id, start_date, end_date, reason, status, counts_as_leave, admin_note')
       .order('start_date', { ascending: false })
     if (!error) setAbsences((data as Absence[]) ?? [])
     setLoading(false)

@@ -125,6 +125,8 @@ create table if not exists public.absences (
 alter table public.absences add column if not exists status text not null default 'approved';
 alter table public.absences add column if not exists decided_by uuid references public.profiles (id);
 alter table public.absences add column if not exists decided_at timestamptz;
+-- Message du propriétaire à la validation / au refus (visible par l'employé).
+alter table public.absences add column if not exists admin_note text;
 
 -- Décompte des congés : une absence « congés » consomme des jours du
 -- compteur annuel (jours ouvrables lundi → samedi), contrairement à une

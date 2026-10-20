@@ -17,6 +17,7 @@ export default function OvertimePendingPanel({
 }) {
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [notes, setNotes] = useState<Record<string, string>>({})
   const pending = requests
     .filter((r) => r.status === 'pending')
     .sort((a, b) => (a.work_date < b.work_date ? -1 : 1))
@@ -28,9 +29,10 @@ export default function OvertimePendingPanel({
   async function decide(id: string, status: 'approved' | 'rejected') {
     setBusy(id)
     setError(null)
+    const admin_note = notes[id]?.trim() || null
     const { error } = await supabase
       .from('overtime_requests')
-      .update({ status, decided_at: new Date().toISOString() })
+      .update({ status, admin_note, decided_at: new Date().toISOString() })
       .eq('id', id)
     setBusy(null)
     if (error) {
@@ -73,7 +75,13 @@ export default function OvertimePendingPanel({
               </p>
               {r.note && <p className="text-xs text-brand-700/60">{r.note}</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                value={notes[r.id] ?? ''}
+                onChange={(e) => setNotes((n) => ({ ...n, [r.id]: e.target.value }))}
+                placeholder="Message (optionnel)"
+                className="w-44 rounded-lg border border-amber-200 bg-white px-2 py-1.5 text-xs outline-none focus:border-brand-400"
+              />
               <button
                 onClick={() => decide(r.id, 'approved')}
                 disabled={busy === r.id}
