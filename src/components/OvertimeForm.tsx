@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { format } from 'date-fns'
 import { fr } from 'date-fns/locale'
 import { supabase } from '../lib/supabase'
@@ -156,13 +155,6 @@ export default function OvertimeForm({
           ))}
         </div>
       )}
-
-      <Link
-        to="/historique"
-        className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
-      >
-        Voir tout mon historique d&apos;heures sup →
-      </Link>
     </div>
   )
 }

@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import type { Absence } from '../types'
 import ErrorBanner from './ErrorBanner'
@@ -17,8 +16,8 @@ export default function AbsenceRequestForm({
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const myPendingRequests = requests
-    .filter((a) => a.employee_id === employeeId && a.status === 'pending')
+  const myRequests = requests
+    .filter((a) => a.employee_id === employeeId)
     .sort((a, b) => (a.start_date < b.start_date ? 1 : -1))
 
   async function submit(e: FormEvent<HTMLFormElement>) {
@@ -108,9 +107,9 @@ export default function AbsenceRequestForm({
         </button>
       </form>
 
-      {myPendingRequests.length > 0 && (
+      {myRequests.length > 0 && (
         <div className="divide-y divide-sand-100 border-t border-sand-100 pt-2">
-          {myPendingRequests.map((a) => (
+          {myRequests.map((a) => (
             <div key={a.id} className="flex items-center justify-between gap-2 py-1.5 text-sm">
               <div>
                 <span className="font-medium text-brand-900">
@@ -121,24 +120,19 @@ export default function AbsenceRequestForm({
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={a.status} />
-                <button
-                  onClick={() => cancel(a.id)}
-                  className="text-xs font-medium text-red-600 hover:underline"
-                >
-                  Annuler
-                </button>
+                {a.status === 'pending' && (
+                  <button
+                    onClick={() => cancel(a.id)}
+                    className="text-xs font-medium text-red-600 hover:underline"
+                  >
+                    Annuler
+                  </button>
+                )}
               </div>
             </div>
           ))}
         </div>
       )}
-
-      <Link
-        to="/historique"
-        className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
-      >
-        Voir tout mon historique d&apos;absences →
-      </Link>
     </div>
   )
 }
