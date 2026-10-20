@@ -17,7 +17,7 @@ export default function WeekNavigator({
   return (
     <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-3">
       <div className="min-w-0 shrink">
-        <h1 className="text-lg font-semibold capitalize text-brand-900">
+        <h1 className="text-base font-semibold capitalize text-brand-900 sm:text-lg">
           Semaine du {format(start, 'd MMMM', { locale: fr })} au{' '}
           {format(end, 'd MMMM yyyy', { locale: fr })}
         </h1>
@@ -28,13 +28,13 @@ export default function WeekNavigator({
           value={weekStart}
           title="Aller à une semaine"
           onChange={(e) => e.target.value && onChange(weekStartOf(parseISO(e.target.value)))}
-          className="rounded-lg border border-sand-300 bg-white px-2 py-1.5 text-sm text-brand-800 outline-none focus:border-brand-400"
+          className="hidden rounded-lg border border-sand-300 bg-white px-2 py-1.5 text-sm text-brand-800 outline-none focus:border-brand-400 sm:block"
         />
         <button
           onClick={() => onChange(format(addWeeks(start, -1), 'yyyy-MM-dd'))}
           className="shrink-0 rounded-lg border border-sand-300 bg-white px-3 py-1.5 text-sm text-brand-800 hover:bg-sand-100"
         >
-          ← Précédente
+          ←<span className="hidden sm:inline"> Précédente</span>
         </button>
         {!isCurrentWeek && (
           <button
@@ -48,7 +48,7 @@ export default function WeekNavigator({
           onClick={() => onChange(format(addWeeks(start, 1), 'yyyy-MM-dd'))}
           className="shrink-0 rounded-lg border border-sand-300 bg-white px-3 py-1.5 text-sm text-brand-800 hover:bg-sand-100"
         >
-          Suivante →
+          <span className="hidden sm:inline">Suivante </span>→
         </button>
       </div>
     </div>

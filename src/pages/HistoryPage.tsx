@@ -218,7 +218,7 @@ export default function HistoryPage() {
               </option>
             ))}
           </select>
-          <div className="flex rounded-lg border border-sand-300 bg-white p-0.5 text-sm">
+          <div className="flex flex-wrap rounded-lg border border-sand-300 bg-white p-0.5 text-sm">
             {(
               [
                 ['all', 'Tout'],
@@ -237,7 +237,7 @@ export default function HistoryPage() {
               </button>
             ))}
           </div>
-          <div className="flex rounded-lg border border-sand-300 bg-white p-0.5 text-sm">
+          <div className="flex flex-wrap rounded-lg border border-sand-300 bg-white p-0.5 text-sm">
             {(
               [
                 ['all', 'Tous statuts'],

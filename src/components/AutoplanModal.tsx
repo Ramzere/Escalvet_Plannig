@@ -199,6 +199,81 @@ export default function AutoplanModal({
 
   const tracks = [...new Set(slots.map((s) => s.track))].sort()
 
+  /** Une case de la proposition : menu déroulant de personne + horaire + poste, avec ses alertes. */
+  function renderSlot(i: number) {
+    if (!result) return null
+    const s = result.slots[i]
+    const d = s.day
+    const who = result.assignment[i]
+    const otherPeriod = s.period === 'matin' ? 'apres-midi' : 'matin'
+    const otherIdx = result.slots.findIndex(
+      (o) => o.day === d && o.period === otherPeriod && o.track === s.track
+    )
+    const isolated =
+      who !== null &&
+      otherIdx !== -1 &&
+      !result.slots.some(
+        (o, j) => o.day === d && o.period === otherPeriod && result.assignment[j] === who
+      )
+    const conflict = result.conflicts.includes(i)
+    const absent = result.unavailable.includes(i)
+    const pendingAbs = result.pendingAbsence.includes(i)
+    const style = conflict
+      ? 'border-red-400 bg-red-50 text-red-800'
+      : who === null
+        ? 'border-dashed border-red-300 bg-red-50 text-red-700'
+        : absent
+          ? 'border-red-300 bg-red-50 text-red-800'
+          : pendingAbs
+            ? 'border-orange-400 bg-orange-50 text-orange-900'
+            : isolated
+              ? 'border-amber-300 bg-amber-50 text-amber-900'
+              : 'border-sand-200 bg-sand-50 text-brand-900'
+    const title = conflict
+      ? 'Déjà placée sur cette demi-journée'
+      : absent
+        ? 'Absente ce jour-là'
+        : pendingAbs
+          ? 'A demandé une absence ce jour-là (pas encore validée)'
+          : isolated
+            ? 'Demi-journée isolée'
+            : undefined
+    const poste = result.postes[i]
+    return (
+      <div key={`${d}-${s.period}-${s.track}`} className={`rounded-md border px-1.5 py-1 ${style}`} title={title}>
+        <select
+          value={who ?? ''}
+          onChange={(e) => assign(i, e.target.value || null)}
+          className="w-full bg-transparent font-semibold outline-none"
+          aria-label={`${DAY_LABELS[d]} ${s.period} ${s.start}-${s.end}`}
+        >
+          <option value="">—</option>
+          {team
+            .filter((t) => selected.has(t.id) || t.id === who)
+            .map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.full_name}
+                {absenceStatusOn(t.id, days[d]) === 'approved'
+                  ? ' (absente)'
+                  : absenceStatusOn(t.id, days[d]) === 'pending'
+                    ? ' (demande en attente)'
+                    : ''}
+              </option>
+            ))}
+        </select>
+        <p className="opacity-70">
+          {s.start}–{s.end}
+        </p>
+        {poste && (
+          <p className="mt-0.5 flex items-center gap-1 opacity-80">
+            <span className={`inline-block h-2 w-2 rounded-full ${POSTE_DOT[poste]}`} />
+            {POSTE_SHORT_LABELS[poste]}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-brand-900/40 p-0 sm:items-center sm:p-4">
       <div className="max-h-[95svh] w-full max-w-4xl overflow-y-auto rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
@@ -374,7 +449,7 @@ export default function AutoplanModal({
                 </p>
               )}
 
-              <div className="overflow-x-auto rounded-xl border border-sand-200">
+              <div className="hidden overflow-x-auto rounded-xl border border-sand-200 sm:block">
                 <table className="w-full min-w-[640px] table-fixed border-collapse text-xs">
                   <thead>
                     <tr className="bg-sand-50 text-left text-brand-700/70">
@@ -405,84 +480,7 @@ export default function AutoplanModal({
                                 const i = result.slots.findIndex(
                                   (s) => s.day === d && s.period === period && s.track === track
                                 )
-                                if (i === -1) return null
-                                const s = result.slots[i]
-                                const who = result.assignment[i]
-                                const otherPeriod = period === 'matin' ? 'apres-midi' : 'matin'
-                                const otherIdx = result.slots.findIndex(
-                                  (o) => o.day === d && o.period === otherPeriod && o.track === track
-                                )
-                                const isolated =
-                                  who !== null &&
-                                  otherIdx !== -1 &&
-                                  !result.slots.some(
-                                    (o, j) =>
-                                      o.day === d &&
-                                      o.period === otherPeriod &&
-                                      result.assignment[j] === who
-                                  )
-                                const conflict = result.conflicts.includes(i)
-                                const absent = result.unavailable.includes(i)
-                                const pendingAbs = result.pendingAbsence.includes(i)
-                                const style = conflict
-                                  ? 'border-red-400 bg-red-50 text-red-800'
-                                  : who === null
-                                    ? 'border-dashed border-red-300 bg-red-50 text-red-700'
-                                    : absent
-                                      ? 'border-red-300 bg-red-50 text-red-800'
-                                      : pendingAbs
-                                        ? 'border-orange-400 bg-orange-50 text-orange-900'
-                                        : isolated
-                                          ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                          : 'border-sand-200 bg-sand-50 text-brand-900'
-                                const title = conflict
-                                  ? 'Déjà placée sur cette demi-journée'
-                                  : absent
-                                    ? 'Absente ce jour-là'
-                                    : pendingAbs
-                                      ? 'A demandé une absence ce jour-là (pas encore validée)'
-                                      : isolated
-                                        ? 'Demi-journée isolée'
-                                        : undefined
-                                return (
-                                  <div
-                                    key={track}
-                                    className={`rounded-md border px-1.5 py-1 ${style}`}
-                                    title={title}
-                                  >
-                                    <select
-                                      value={who ?? ''}
-                                      onChange={(e) => assign(i, e.target.value || null)}
-                                      className="w-full bg-transparent font-semibold outline-none"
-                                      aria-label={`${DAY_LABELS[d]} ${period} ${s.start}-${s.end}`}
-                                    >
-                                      <option value="">—</option>
-                                      {team
-                                        .filter((t) => selected.has(t.id) || t.id === who)
-                                        .map((t) => (
-                                          <option key={t.id} value={t.id}>
-                                            {t.full_name}
-                                            {absenceStatusOn(t.id, days[d]) === 'approved'
-                                              ? ' (absente)'
-                                              : absenceStatusOn(t.id, days[d]) === 'pending'
-                                                ? ' (demande en attente)'
-                                                : ''}
-                                          </option>
-                                        ))}
-                                    </select>
-                                    <p className="opacity-70">
-                                      {s.start}–{s.end}
-                                    </p>
-                                    {result.postes[i] && (
-                                      <p className="mt-0.5 flex items-center gap-1 opacity-80">
-                                        <span
-                                          className={`inline-block h-2 w-2 rounded-full ${POSTE_DOT[result.postes[i]!]}`}
-                                        />
-                                        {POSTE_SHORT_LABELS[result.postes[i]!]}
-                                      </p>
-                                    )}
-                                  </div>
-                                )
+                                return i === -1 ? null : renderSlot(i)
                               })}
                             </div>
                           </td>
@@ -491,6 +489,38 @@ export default function AutoplanModal({
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              <div className="space-y-2 sm:hidden">
+                {days.map((iso, d) => {
+                  const ofDay = result.slots.map((_, i) => i).filter((i) => result.slots[i].day === d)
+                  return (
+                    <div key={iso} className="overflow-hidden rounded-xl border border-sand-200 text-xs">
+                      <div className="bg-sand-50 px-3 py-1.5 font-medium text-brand-900">
+                        {DAY_LABELS[d]} {format(parseISO(iso), 'd/MM')}
+                        {publicHolidayName(iso) && (
+                          <span className="font-normal text-brand-700/50"> · Férié · fermé</span>
+                        )}
+                      </div>
+                      {ofDay.length === 0 ? (
+                        <p className="px-3 py-2 text-brand-700/40">Fermé</p>
+                      ) : (
+                        (['matin', 'apres-midi'] as const).map((period) => {
+                          const ofPeriod = ofDay.filter((i) => result.slots[i].period === period)
+                          if (ofPeriod.length === 0) return null
+                          return (
+                            <div key={period} className="border-t border-sand-100 px-3 py-2">
+                              <p className="mb-1 text-[11px] font-medium text-brand-700/60">
+                                {period === 'matin' ? 'Matin' : 'Après-midi'}
+                              </p>
+                              <div className="space-y-1">{ofPeriod.map((i) => renderSlot(i))}</div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
+                  )
+                })}
               </div>
 
               <div className="grid gap-px overflow-hidden rounded-xl border border-sand-200 bg-sand-100 sm:grid-cols-2 lg:grid-cols-4">

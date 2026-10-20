@@ -91,7 +91,8 @@ export default function PlanningPage() {
             onClick={() => setAutoplanOpen(true)}
             className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
           >
-            ✨ Proposer un planning
+            ✨ <span className="hidden sm:inline">Proposer un planning</span>
+            <span className="sm:hidden">Proposer</span>
           </button>
         )}
         {isOwner && hasBothGroups && (

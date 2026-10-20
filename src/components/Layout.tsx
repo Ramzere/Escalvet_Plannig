@@ -5,15 +5,15 @@ export default function Layout() {
   const { profile, signOut } = useAuth()
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+    `shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition ${
       isActive ? 'bg-brand-600 text-white' : 'text-brand-800 hover:bg-brand-100'
     }`
 
   return (
     <div className="min-h-svh bg-sand-50">
       <header className="border-b border-sand-200 bg-white">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
             <img
               src="/logoEscalVet.jpeg"
               alt=""
@@ -23,14 +23,21 @@ export default function Layout() {
               <p className="text-sm font-semibold leading-tight text-brand-900">
                 Escal&apos;vet
               </p>
-              <p className="text-xs leading-tight text-brand-700/60">
+              <p className="truncate text-xs leading-tight text-brand-700/60">
                 {profile?.full_name}
                 {profile?.is_owner ? ' · propriétaire' : ''}
               </p>
             </div>
           </div>
 
-          <nav className="flex items-center gap-1">
+          <button
+            onClick={() => signOut()}
+            className="order-2 rounded-lg px-3 py-1.5 text-sm font-medium text-brand-700/70 transition hover:bg-sand-100 hover:text-brand-900 sm:order-3"
+          >
+            Déconnexion
+          </button>
+
+          <nav className="order-3 flex w-full items-center gap-1 overflow-x-auto sm:order-2 sm:w-auto">
             <NavLink to="/planning" className={linkClass}>
               Planning
             </NavLink>
@@ -45,13 +52,6 @@ export default function Layout() {
               </>
             )}
           </nav>
-
-          <button
-            onClick={() => signOut()}
-            className="rounded-lg px-3 py-1.5 text-sm font-medium text-brand-700/70 transition hover:bg-sand-100 hover:text-brand-900"
-          >
-            Déconnexion
-          </button>
         </div>
       </header>
 
