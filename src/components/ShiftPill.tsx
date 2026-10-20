@@ -14,10 +14,13 @@ const NEUTRAL_STYLE = 'bg-sand-100 text-brand-700 border-sand-300'
 export default function ShiftPill({
   shift,
   employeeName,
+  inactive = false,
   onClick,
 }: {
   shift: Shift
   employeeName: string
+  /** Compte désactivé : affiché en grisé, pour mémoire. */
+  inactive?: boolean
   onClick?: () => void
 }) {
   const hours = shiftHours(shift)
@@ -28,8 +31,16 @@ export default function ShiftPill({
       disabled={!onClick}
       className={`min-w-[70px] flex-1 rounded-lg border px-1.5 py-1.5 text-left text-xs leading-snug transition ${
         shift.poste ? POSTE_STYLES[shift.poste] : NEUTRAL_STYLE
-      } ${onClick ? 'cursor-pointer hover:brightness-95' : 'cursor-default'}`}
-      title={shift.poste ? POSTE_SHORT_LABELS[shift.poste] : undefined}
+      } ${onClick ? 'cursor-pointer hover:brightness-95' : 'cursor-default'} ${
+        inactive ? 'opacity-50 grayscale' : ''
+      }`}
+      title={
+        inactive
+          ? `${employeeName} (compte désactivé)`
+          : shift.poste
+            ? POSTE_SHORT_LABELS[shift.poste]
+            : undefined
+      }
     >
       <p className="font-semibold">{employeeName}</p>
       <p className="opacity-80">

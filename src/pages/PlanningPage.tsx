@@ -56,6 +56,10 @@ export default function PlanningPage() {
     () => team.filter((t) => t.active && t.group_name === groupFilter),
     [team, groupFilter]
   )
+  // Les créneaux des comptes désactivés restent visibles (en grisé) pour ne
+  // pas trouer l'historique des semaines passées.
+  const groupTeam = useMemo(() => team.filter((t) => t.group_name === groupFilter), [team, groupFilter])
+  const isInactive = (employeeId: string) => !team.find((t) => t.id === employeeId)?.active
 
   const weekShifts = useMemo(() => {
     const isoDays = days.map((d) => format(d, 'yyyy-MM-dd'))
@@ -67,7 +71,7 @@ export default function PlanningPage() {
       (s) =>
         s.work_date === workDateIso &&
         s.period === period &&
-        visibleTeam.some((t) => t.id === s.employee_id)
+        groupTeam.some((t) => t.id === s.employee_id)
     )
   }
 
@@ -190,6 +194,7 @@ export default function PlanningPage() {
                                   key={s.id}
                                   shift={s}
                                   employeeName={nameOf(s.employee_id)}
+                                  inactive={isInactive(s.employee_id)}
                                   onClick={
                                     isOwner
                                       ? () => setEditing({ workDate: iso, period: period.key, shift: s })
@@ -278,6 +283,7 @@ export default function PlanningPage() {
                                   key={s.id}
                                   shift={s}
                                   employeeName={nameOf(s.employee_id)}
+                                  inactive={isInactive(s.employee_id)}
                                   onClick={
                                     isOwner
                                       ? () => setEditing({ workDate: iso, period: period.key, shift: s })
@@ -364,7 +370,11 @@ export default function PlanningPage() {
         <ShiftEditorModal
           workDate={editing.workDate}
           period={editing.period}
-          team={visibleTeam}
+          team={
+            editing.shift && isInactive(editing.shift.employee_id)
+              ? [...visibleTeam, ...groupTeam.filter((t) => t.id === editing.shift?.employee_id)]
+              : visibleTeam
+          }
           existing={editing.shift}
           siblings={shiftsFor(editing.workDate, editing.period)}
           onClose={() => setEditing(null)}
