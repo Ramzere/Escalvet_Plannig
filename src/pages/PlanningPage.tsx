@@ -366,6 +366,7 @@ export default function PlanningPage() {
           period={editing.period}
           team={visibleTeam}
           existing={editing.shift}
+          siblings={shiftsFor(editing.workDate, editing.period)}
           onClose={() => setEditing(null)}
           onSaved={reloadShifts}
         />

@@ -17,6 +17,7 @@ export default function ShiftEditorModal({
   period,
   team,
   existing,
+  siblings = [],
   onClose,
   onSaved,
 }: {
@@ -24,6 +25,8 @@ export default function ShiftEditorModal({
   period: Period
   team: Profile[]
   existing: Shift | null
+  /** Autres créneaux déjà présents sur cette demi-journée (pour éviter un doublon). */
+  siblings?: Shift[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -48,6 +51,17 @@ export default function ShiftEditorModal({
     }
     if (endTime <= startTime) {
       setError("L'heure de fin doit être après l'heure de début.")
+      return
+    }
+    const alreadyThere = siblings.find(
+      (s) => s.employee_id === employeeId && s.id !== existing?.id
+    )
+    if (alreadyThere) {
+      setError(
+        `${selectedProfile?.full_name ?? 'Cette personne'} a déjà un créneau ${
+          period === 'matin' ? 'ce matin-là' : 'cet après-midi-là'
+        } (${alreadyThere.start_time.slice(0, 5)}–${alreadyThere.end_time.slice(0, 5)}). Modifie-le plutôt.`
+      )
       return
     }
     setSaving(true)
