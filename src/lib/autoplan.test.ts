@@ -148,10 +148,22 @@ describe('evaluatePlan (modification à la main)', () => {
     const e = evaluatePlan(input, r.slots, edited)
     expect(e.conflicts.sort()).toEqual([mA, mB].sort())
     expect(e.unavailable).toEqual([aA])
+    expect(e.pendingAbsence).toEqual([])
     expect(e.postes[mA]).toBe('bleu') // deux créneaux occupés : pas « seul »
     const clara = e.people.find((p) => p.employeeId === 'a')!
     expect(clara.hours).toBeGreaterThan(0)
     expect(e.toShifts().length).toBe(edited.filter((x) => x !== null).length)
+  })
+})
+
+describe('demande d’absence en attente', () => {
+  it('signale les créneaux concernés sans les interdire', () => {
+    const absences: Absence[] = [
+      { id: 'p', employee_id: 'a', start_date: '2026-11-03', end_date: '2026-11-03', reason: 'CP', status: 'pending', counts_as_leave: true },
+    ]
+    const r = run({ absences, options: { seed: 7, iterations: 8000, catchUpRate: 0 } })
+    const onTuesday = r.slots.map((_, i) => i).filter((i) => r.slots[i].day === 1 && r.assignment[i] === 'a')
+    expect(r.pendingAbsence.sort()).toEqual(onTuesday.sort())
   })
 })
 

@@ -184,6 +184,8 @@ export interface AutoplanResult {
   conflicts: number[]
   /** Index des créneaux où la personne placée est absente ce jour-là. */
   unavailable: number[]
+  /** Index des créneaux où la personne placée a une demande d'absence en attente ce jour-là. */
+  pendingAbsence: number[]
   score: number
   /** Créneaux prêts à être insérés dans `shifts`. */
   toShifts: () => Omit<Shift, 'id'>[]
@@ -228,6 +230,17 @@ function buildContext(input: AutoplanInput) {
         )
     )
   )
+  const hasPendingAbsence: boolean[][] = people.map((p) =>
+    days.map((iso) =>
+      absences.some(
+        (a) =>
+          a.employee_id === p.id &&
+          a.status === 'pending' &&
+          a.start_date <= iso &&
+          iso <= a.end_date
+      )
+    )
+  )
   const off = people.map((p) => offDaysInWeek(absences, p.id, weekStart))
   const absentDays = off.map((o) => o.absentDays)
   const theoretical = people.map((p, i) => {
@@ -270,6 +283,7 @@ function buildContext(input: AutoplanInput) {
     durations,
     people,
     available,
+    hasPendingAbsence,
     absentDays,
     theoretical,
     target,
@@ -292,6 +306,7 @@ function buildResult(ctx: Context, assignmentIds: (string | null)[], score: numb
   const count = people.map(() => Array.from({ length: WORK_DAYS_PER_WEEK }, () => [0, 0]))
   const conflicts: number[] = []
   const unavailable: number[] = []
+  const pendingAbsence: number[] = []
 
   slots.forEach((s, i) => {
     const id = assignmentIds[i]
@@ -301,6 +316,7 @@ function buildResult(ctx: Context, assignmentIds: (string | null)[], score: numb
     hours[pi] += durations[i]
     count[pi][s.day][periodIdx(s.period)]++
     if (!ctx.available[pi][s.day]) unavailable.push(i)
+    else if (ctx.hasPendingAbsence[pi][s.day]) pendingAbsence.push(i)
   })
   slots.forEach((s, i) => {
     const id = assignmentIds[i]
@@ -342,6 +358,7 @@ function buildResult(ctx: Context, assignmentIds: (string | null)[], score: numb
     unfilled: assignmentIds.filter((a) => a === null).length,
     conflicts,
     unavailable,
+    pendingAbsence,
     score,
     toShifts: () =>
       slots.flatMap((s, i) => {

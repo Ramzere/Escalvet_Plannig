@@ -124,14 +124,14 @@ export default function AutoplanModal({
   }
 
   const hasConflicts = !!result && result.conflicts.length > 0
-  const isAbsentOn = (employeeId: string, dayIso: string) =>
-    absences.some(
+  const absenceStatusOn = (employeeId: string, dayIso: string) =>
+    absences.find(
       (a) =>
         a.employee_id === employeeId &&
-        a.status === 'approved' &&
+        a.status !== 'rejected' &&
         a.start_date <= dayIso &&
         dayIso <= a.end_date
-    )
+    )?.status
 
   async function apply() {
     if (!result) return
@@ -356,6 +356,12 @@ export default function AutoplanModal({
                   Corrige avant d&apos;appliquer.
                 </p>
               )}
+              {result.pendingAbsence.length > 0 && (
+                <p className="rounded-lg bg-orange-50 px-3 py-2 text-sm text-orange-900">
+                  Une personne est placée un jour où elle a demandé une absence pas encore
+                  validée (cases orange). Valide ou refuse la demande, ou change la personne.
+                </p>
+              )}
               {result.unavailable.length > 0 && !hasConflicts && (
                 <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-800">
                   Attention : une personne est placée un jour où elle est absente (cases rouges).
@@ -412,22 +418,27 @@ export default function AutoplanModal({
                                   )
                                 const conflict = result.conflicts.includes(i)
                                 const absent = result.unavailable.includes(i)
+                                const pendingAbs = result.pendingAbsence.includes(i)
                                 const style = conflict
                                   ? 'border-red-400 bg-red-50 text-red-800'
                                   : who === null
                                     ? 'border-dashed border-red-300 bg-red-50 text-red-700'
                                     : absent
                                       ? 'border-red-300 bg-red-50 text-red-800'
-                                      : isolated
-                                        ? 'border-amber-300 bg-amber-50 text-amber-900'
-                                        : 'border-sand-200 bg-sand-50 text-brand-900'
+                                      : pendingAbs
+                                        ? 'border-orange-400 bg-orange-50 text-orange-900'
+                                        : isolated
+                                          ? 'border-amber-300 bg-amber-50 text-amber-900'
+                                          : 'border-sand-200 bg-sand-50 text-brand-900'
                                 const title = conflict
                                   ? 'Déjà placée sur cette demi-journée'
                                   : absent
                                     ? 'Absente ce jour-là'
-                                    : isolated
-                                      ? 'Demi-journée isolée'
-                                      : undefined
+                                    : pendingAbs
+                                      ? 'A demandé une absence ce jour-là (pas encore validée)'
+                                      : isolated
+                                        ? 'Demi-journée isolée'
+                                        : undefined
                                 return (
                                   <div
                                     key={track}
@@ -446,7 +457,11 @@ export default function AutoplanModal({
                                         .map((t) => (
                                           <option key={t.id} value={t.id}>
                                             {t.full_name}
-                                            {isAbsentOn(t.id, days[d]) ? ' (absente)' : ''}
+                                            {absenceStatusOn(t.id, days[d]) === 'approved'
+                                              ? ' (absente)'
+                                              : absenceStatusOn(t.id, days[d]) === 'pending'
+                                                ? ' (demande en attente)'
+                                                : ''}
                                           </option>
                                         ))}
                                     </select>
