@@ -68,7 +68,11 @@ export default function AbsencePendingPanel({
                   {new Date(a.end_date).toLocaleDateString('fr-FR')}
                 </span>
               </p>
-              {a.reason && <p className="text-xs text-brand-700/60">{a.reason}</p>}
+              <p className="text-xs text-brand-700/60">
+                {a.reason}
+                {a.reason && ' · '}
+                {a.counts_as_leave ? 'décompté des congés' : 'hors congés (école, arrêt…)'}
+              </p>
             </div>
             <div className="flex gap-2">
               <button

@@ -50,6 +50,7 @@ export default function AbsenceBar({
     const start_date = String(form.get('start_date'))
     const end_date = String(form.get('end_date'))
     const reason = String(form.get('reason') || 'Congés')
+    const counts_as_leave = form.get('counts_as_leave') === 'on'
     if (!employee_id || !start_date || !end_date) {
       setBusy(false)
       return
@@ -62,11 +63,11 @@ export default function AbsenceBar({
     const { error } = editing
       ? await supabase
           .from('absences')
-          .update({ employee_id, start_date, end_date, reason, status: 'approved' })
+          .update({ employee_id, start_date, end_date, reason, status: 'approved', counts_as_leave })
           .eq('id', editing.id)
       : await supabase
           .from('absences')
-          .insert({ employee_id, start_date, end_date, reason, status: 'approved' })
+          .insert({ employee_id, start_date, end_date, reason, status: 'approved', counts_as_leave })
     setBusy(false)
     if (error) {
       setError(error.message)
@@ -195,6 +196,14 @@ export default function AbsenceBar({
               className="w-32 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
+          <label className="flex items-center gap-2 pb-1.5 text-xs text-brand-900">
+            <input
+              name="counts_as_leave"
+              type="checkbox"
+              defaultChecked={editing ? editing.counts_as_leave : true}
+            />
+            Décompter des congés
+          </label>
           <button
             type="submit"
             disabled={busy}
@@ -227,6 +236,7 @@ export default function AbsenceBar({
                 {' → '}
                 {new Date(a.end_date).toLocaleDateString('fr-FR')})
                 {a.status === 'pending' && ' · en attente'}
+                {!a.counts_as_leave && ' · hors congés'}
               </button>
               <button
                 onClick={() => deleteAbsence(a.id)}

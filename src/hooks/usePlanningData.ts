@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import type { Absence, Contract, OvertimeRequest, Profile, Shift } from '../types'
+import type { Absence, Contract, LeaveBalance, OvertimeRequest, Profile, Shift } from '../types'
 
 /**
  * Recharge `onChange` dès qu'une ligne de `table` change côté Supabase
@@ -71,7 +71,7 @@ export function useAbsences() {
     setLoading(true)
     const { data, error } = await supabase
       .from('absences')
-      .select('id, employee_id, start_date, end_date, reason, status')
+      .select('id, employee_id, start_date, end_date, reason, status, counts_as_leave')
       .order('start_date', { ascending: false })
     if (!error) setAbsences((data as Absence[]) ?? [])
     setLoading(false)
@@ -137,4 +137,26 @@ export function useShiftsRange(fromIso: string, toIso: string) {
   useTableChanges('shifts', reload)
 
   return { shifts, loading, reload }
+}
+
+/** Droits à congés (jours acquis + report) par employé et par année. */
+export function useLeaveBalances() {
+  const [balances, setBalances] = useState<LeaveBalance[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const reload = useCallback(async () => {
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('leave_balances')
+      .select('id, employee_id, year, entitlement, carry_over')
+    if (!error) setBalances((data as LeaveBalance[]) ?? [])
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    reload()
+  }, [reload])
+  useTableChanges('leave_balances', reload)
+
+  return { balances, loading, reload }
 }

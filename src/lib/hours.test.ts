@@ -105,7 +105,7 @@ describe('weekTotals — absences au prorata', () => {
     // Semaine du 3/08 (lundi) au 8/08 (samedi) : 4 jours d'absence sur 6 =>
     // il ne reste que 2/6 des heures théoriques (35h -> 11h40).
     const absences: Absence[] = [
-      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-06', reason: 'Congés', status: 'approved' },
+      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-06', reason: 'Congés', status: 'approved', counts_as_leave: true },
     ]
     const totals = weekTotals('clara', '2026-08-03', claraShifts, claraContract, absences)
     expect(totals.absentDays).toBe(4)
@@ -115,7 +115,7 @@ describe('weekTotals — absences au prorata', () => {
 
   it('marque la semaine comme entièrement absente quand les 6 jours sont couverts', () => {
     const absences: Absence[] = [
-      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'approved' },
+      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'approved', counts_as_leave: true },
     ]
     const totals = weekTotals('clara', '2026-08-03', claraShifts, claraContract, absences)
     expect(totals.isAbsentWeek).toBe(true)
@@ -124,8 +124,8 @@ describe('weekTotals — absences au prorata', () => {
 
   it('ignore une demande d\'absence en attente ou refusée dans le calcul des heures théoriques', () => {
     const absences: Absence[] = [
-      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'pending' },
-      { id: 'a2', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'rejected' },
+      { id: 'a1', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'pending', counts_as_leave: true },
+      { id: 'a2', employee_id: 'clara', start_date: '2026-08-03', end_date: '2026-08-08', reason: 'Congés', status: 'rejected', counts_as_leave: true },
     ]
     const totals = weekTotals('clara', '2026-08-03', claraShifts, claraContract, absences)
     expect(totals.absentDays).toBe(0)

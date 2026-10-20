@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   useAbsences,
   useContracts,
+  useLeaveBalances,
   useOvertimeRequests,
   useShiftsRange,
   useTeam,
@@ -17,6 +18,7 @@ import OvertimePendingPanel from '../components/OvertimePendingPanel'
 import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
 import PreviousYearBalance from '../components/PreviousYearBalance'
 import AbsencePendingPanel from '../components/AbsencePendingPanel'
+import LeaveBalancePanel from '../components/LeaveBalancePanel'
 
 export default function TeamAdminPage() {
   const { profile: me } = useAuth()
@@ -24,6 +26,7 @@ export default function TeamAdminPage() {
   const { contracts, reload: reloadContracts } = useContracts()
   const { absences, reload: reloadAbsences } = useAbsences()
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
+  const { balances: leaveBalances, reload: reloadLeave } = useLeaveBalances()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -140,6 +143,13 @@ export default function TeamAdminPage() {
       <OvertimePendingPanel team={team} requests={overtimeRequests} onChanged={reloadOvertime} />
 
       <AbsencePendingPanel team={team} requests={absences} onChanged={reloadAbsences} />
+
+      <LeaveBalancePanel
+        team={team}
+        absences={absences}
+        balances={leaveBalances}
+        onChanged={reloadLeave}
+      />
 
       <OvertimeYearlySummary team={team} requests={overtimeRequests} />
 

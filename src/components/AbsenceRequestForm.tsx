@@ -26,6 +26,7 @@ export default function AbsenceRequestForm({
     const start_date = String(form.get('start_date'))
     const end_date = String(form.get('end_date'))
     const reason = String(form.get('reason') || 'Congés')
+    const counts_as_leave = form.get('counts_as_leave') === 'on'
     if (!start_date || !end_date) return
     if (end_date < start_date) {
       setError('La date de fin doit être après la date de début.')
@@ -39,6 +40,7 @@ export default function AbsenceRequestForm({
       end_date,
       reason,
       status: 'pending',
+      counts_as_leave,
     })
     setSubmitting(false)
     if (error) {
@@ -98,6 +100,10 @@ export default function AbsenceRequestForm({
             className="w-full rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
           />
         </div>
+        <label className="flex items-center gap-2 pb-1.5 text-xs text-brand-900">
+          <input name="counts_as_leave" type="checkbox" defaultChecked />
+          Décompter de mes congés
+        </label>
         <button
           type="submit"
           disabled={submitting}
@@ -117,6 +123,9 @@ export default function AbsenceRequestForm({
                   {new Date(a.end_date).toLocaleDateString('fr-FR')}
                 </span>
                 {a.reason && <span className="text-brand-700/50"> · {a.reason}</span>}
+                {!a.counts_as_leave && (
+                  <span className="text-brand-700/40"> · hors congés</span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <StatusBadge status={a.status} />

@@ -50,7 +50,7 @@ describe('generateWeekPlan', () => {
 
   it("n'affecte jamais une personne absente ce jour-là", () => {
     const absences: Absence[] = [
-      { id: 'x', employee_id: 'a', start_date: '2026-11-02', end_date: '2026-11-04', reason: 'CP', status: 'approved' },
+      { id: 'x', employee_id: 'a', start_date: '2026-11-02', end_date: '2026-11-04', reason: 'CP', status: 'approved', counts_as_leave: true },
     ]
     const r = run({ absences })
     r.slots.forEach((s, i) => {

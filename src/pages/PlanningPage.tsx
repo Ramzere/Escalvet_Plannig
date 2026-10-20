@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   useAbsences,
   useContracts,
+  useLeaveBalances,
   useOvertimeRequests,
   useShiftsRange,
   useTeam,
@@ -20,6 +21,7 @@ import AbsenceRequestForm from '../components/AbsenceRequestForm'
 import OvertimeForm from '../components/OvertimeForm'
 import PosteLegend from '../components/PosteLegend'
 import AutoplanModal from '../components/AutoplanModal'
+import LeaveCounter from '../components/LeaveCounter'
 
 const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const PERIODS: { key: Period; label: string }[] = [
@@ -47,6 +49,7 @@ export default function PlanningPage() {
   const { absences, reload: reloadAbsences } = useAbsences()
   const { shifts: yearShifts, reload: reloadShifts } = useShiftsRange(rangeFrom, rangeTo)
   const { requests: overtimeRequests, reload: reloadOvertime } = useOvertimeRequests()
+  const { balances: leaveBalances } = useLeaveBalances()
 
   const visibleTeam = useMemo(
     () => team.filter((t) => t.active && t.group_name === groupFilter),
@@ -286,6 +289,10 @@ export default function PlanningPage() {
           absences={absences}
           overtimeRequests={overtimeRequests}
         />
+
+        {!isOwner && profile && (
+          <LeaveCounter employeeId={profile.id} absences={absences} balances={leaveBalances} />
+        )}
 
         {!isOwner && profile && (
           <AbsenceRequestForm

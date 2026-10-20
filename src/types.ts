@@ -41,7 +41,21 @@ export interface Absence {
   end_date: string // ISO date, incluse
   reason: string
   status: AbsenceStatus
+  /** true = consomme des jours de congés (par opposition à école, arrêt, formation…). */
+  counts_as_leave: boolean
 }
+
+export interface LeaveBalance {
+  id: string
+  employee_id: string
+  year: number
+  /** Jours ouvrables acquis sur l'année (30 par défaut). */
+  entitlement: number
+  /** Report de l'année précédente (peut être négatif). */
+  carry_over: number
+}
+
+export const DEFAULT_LEAVE_ENTITLEMENT = 30
 
 export const CONTRACT_TYPES: ContractType[] = ['CDI', 'CDD', 'Alternance', 'Stage']
 

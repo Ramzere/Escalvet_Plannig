@@ -191,6 +191,13 @@ gh repo create escalvet --private --source=. --push
   seule sur la demi-journée.
   La proposition s'affiche avec le solde de chacune ; on peut demander une
   autre variante, puis l'appliquer et retoucher les créneaux à la main.
+- **Compteur de congés** : chaque absence porte une case « décompter des
+  congés » (cochée par défaut ; à décocher pour une école, un arrêt, une
+  formation…). Les jours sont comptés en jours ouvrables (lundi → samedi).
+  Chaque employé·e voit son compteur de l'année sur le planning (pris, à
+  venir, en attente, restant) ; le propriétaire a le bilan de toute l'équipe
+  dans l'onglet Équipe, avec les jours acquis (30 par défaut) et le report
+  de l'année précédente modifiables par personne et par année.
 - **Qui voit quoi** : chacun voit les créneaux et les absences validées de
   son groupe (pour savoir avec qui il travaille), mais uniquement son propre
   solde d'heures, ses contrats, ses demandes d'absence et d'heures sup. Le

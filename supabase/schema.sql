@@ -126,6 +126,14 @@ alter table public.absences add column if not exists status text not null defaul
 alter table public.absences add column if not exists decided_by uuid references public.profiles (id);
 alter table public.absences add column if not exists decided_at timestamptz;
 
+-- Décompte des congés : une absence « congés » consomme des jours du
+-- compteur annuel (jours ouvrables lundi → samedi), contrairement à une
+-- école, un arrêt maladie, une formation… Les absences existantes sont
+-- classées une fois d'après leur motif.
+alter table public.absences add column if not exists counts_as_leave boolean not null default true;
+update public.absences set counts_as_leave = false
+  where counts_as_leave and reason ~* '(école|ecole|arr[êe]t|maladie|formation|f[ée]ri[ée]|sans solde)';
+
 alter table public.absences drop constraint if exists absences_status_check;
 alter table public.absences add constraint absences_status_check
   check (status in ('pending', 'approved', 'rejected'));
@@ -146,6 +154,25 @@ begin
     drop table public.weekly_absences;
   end if;
 end $$;
+
+-- ----------------------------------------------------------------------------
+-- 4b. LEAVE_BALANCES
+-- Droits à congés d'un employé pour une année civile : jours acquis
+-- (30 jours ouvrables par défaut = 2,5 par mois) et report de l'année
+-- précédente. Les jours pris sont calculés depuis les absences validées
+-- marquées counts_as_leave.
+-- ----------------------------------------------------------------------------
+create table if not exists public.leave_balances (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.profiles (id) on delete cascade,
+  year integer not null,
+  entitlement numeric(5, 1) not null default 30 check (entitlement >= 0),
+  carry_over numeric(5, 1) not null default 0,
+  created_at timestamptz not null default now(),
+  unique (employee_id, year)
+);
+
+comment on table public.leave_balances is 'Jours de congés acquis et reportés par employé et par année civile.';
 
 -- ----------------------------------------------------------------------------
 -- 5. OVERTIME_REQUESTS
@@ -260,6 +287,7 @@ alter table public.contracts enable row level security;
 alter table public.shifts enable row level security;
 alter table public.absences enable row level security;
 alter table public.overtime_requests enable row level security;
+alter table public.leave_balances enable row level security;
 
 -- ---- profiles ----
 drop policy if exists "profiles_select" on public.profiles;
@@ -394,6 +422,18 @@ create policy "overtime_requests_owner_write" on public.overtime_requests
   using (is_owner())
   with check (is_owner());
 
+-- ---- leave_balances ----
+drop policy if exists "leave_balances_select" on public.leave_balances;
+create policy "leave_balances_select" on public.leave_balances
+  for select
+  using (is_owner() or (employee_id = auth.uid() and is_active()));
+
+drop policy if exists "leave_balances_owner_write" on public.leave_balances;
+create policy "leave_balances_owner_write" on public.leave_balances
+  for all
+  using (is_owner())
+  with check (is_owner());
+
 -- ============================================================================
 -- REALTIME
 -- Permet à l'appli de recevoir les changements en direct (un employé voit
@@ -405,7 +445,7 @@ do $$
 declare
   t text;
 begin
-  foreach t in array array['profiles', 'contracts', 'shifts', 'absences', 'overtime_requests']
+  foreach t in array array['profiles', 'contracts', 'shifts', 'absences', 'overtime_requests', 'leave_balances']
   loop
     if not exists (
       select 1 from pg_publication_tables
