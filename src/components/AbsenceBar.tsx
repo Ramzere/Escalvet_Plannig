@@ -4,6 +4,7 @@ import type { Absence, Profile } from '../types'
 import { weekDays } from '../lib/hours'
 import { format } from 'date-fns'
 import ErrorBanner from './ErrorBanner'
+import { overlappingAbsences } from '../lib/leave'
 
 export default function AbsenceBar({
   team,
@@ -57,6 +58,15 @@ export default function AbsenceBar({
     }
     if (end_date < start_date) {
       setError('La date de fin doit être après la date de début.')
+      setBusy(false)
+      return
+    }
+    const overlap = overlappingAbsences(absences, employee_id, start_date, end_date, editing?.id)
+    if (overlap.length > 0) {
+      const o = overlap[0]
+      setError(
+        `${nameOf(employee_id)} a déjà une absence du ${new Date(o.start_date).toLocaleDateString('fr-FR')} au ${new Date(o.end_date).toLocaleDateString('fr-FR')} (${o.reason}${o.status === 'pending' ? ', en attente' : ''}) sur cette période. Modifie-la plutôt.`
+      )
       setBusy(false)
       return
     }

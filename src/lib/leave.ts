@@ -21,6 +21,40 @@ export function leaveDaysOf(absence: Pick<Absence, 'start_date' | 'end_date'>, y
   return days
 }
 
+/** Jours ouvrables (ISO) couverts par une absence pour une année donnée. */
+function leaveDayKeys(absence: Pick<Absence, 'start_date' | 'end_date'>, year: number): string[] {
+  const keys: string[] = []
+  let cursor = parseISO(absence.start_date)
+  const end = parseISO(absence.end_date)
+  while (cursor <= end) {
+    const iso = format(cursor, 'yyyy-MM-dd')
+    if (cursor.getFullYear() === year && cursor.getDay() !== 0 && !isPublicHoliday(iso)) keys.push(iso)
+    cursor = addDays(cursor, 1)
+  }
+  return keys
+}
+
+/**
+ * Absences (non refusées) d'une personne qui chevauchent la période donnée.
+ * Sert à refuser une saisie en double avant de l'envoyer.
+ */
+export function overlappingAbsences(
+  absences: Absence[],
+  employeeId: string,
+  startDate: string,
+  endDate: string,
+  ignoreId?: string
+): Absence[] {
+  return absences.filter(
+    (a) =>
+      a.employee_id === employeeId &&
+      a.id !== ignoreId &&
+      a.status !== 'rejected' &&
+      a.start_date <= endDate &&
+      startDate <= a.end_date
+  )
+}
+
 export interface LeaveSummary {
   employeeId: string
   year: number
@@ -51,17 +85,23 @@ export function leaveSummary(
   const carryOver = balance ? Number(balance.carry_over) : 0
   const todayIso = format(today, 'yyyy-MM-dd')
 
-  let taken = 0
-  let planned = 0
-  let pending = 0
+  // Chaque jour n'est compté qu'une fois, même si deux absences se chevauchent.
+  const takenDays = new Set<string>()
+  const plannedDays = new Set<string>()
+  const pendingDays = new Set<string>()
   for (const a of absences) {
     if (a.employee_id !== employeeId || !a.counts_as_leave || a.status === 'rejected') continue
-    const days = leaveDaysOf(a, year)
-    if (days === 0) continue
-    if (a.status === 'pending') pending += days
-    else if (a.end_date < todayIso) taken += days
-    else planned += days
+    for (const day of leaveDayKeys(a, year)) {
+      if (a.status === 'pending') pendingDays.add(day)
+      else if (day < todayIso) takenDays.add(day)
+      else plannedDays.add(day)
+    }
   }
+  // Un jour validé n'est pas aussi « en attente ».
+  for (const d of takenDays) pendingDays.delete(d)
+  for (const d of plannedDays) pendingDays.delete(d)
+  const taken = takenDays.size
+  const planned = plannedDays.size
   return {
     employeeId,
     year,
@@ -69,7 +109,7 @@ export function leaveSummary(
     carryOver,
     taken,
     planned,
-    pending,
+    pending: pendingDays.size,
     remaining: entitlement + carryOver - taken - planned,
     isDefault: !balance,
   }

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Absence } from '../types'
 import ErrorBanner from './ErrorBanner'
+import { overlappingAbsences } from '../lib/leave'
 import StatusBadge from './StatusBadge'
 
 export default function AbsenceRequestForm({
@@ -30,6 +31,14 @@ export default function AbsenceRequestForm({
     if (!start_date || !end_date) return
     if (end_date < start_date) {
       setError('La date de fin doit être après la date de début.')
+      return
+    }
+    const overlap = overlappingAbsences(requests, employeeId, start_date, end_date)
+    if (overlap.length > 0) {
+      const o = overlap[0]
+      setError(
+        `Tu as déjà une absence du ${new Date(o.start_date).toLocaleDateString('fr-FR')} au ${new Date(o.end_date).toLocaleDateString('fr-FR')} (${o.reason}) sur cette période.`
+      )
       return
     }
     setSubmitting(true)

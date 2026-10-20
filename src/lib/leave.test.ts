@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDays, leaveDaysOf, leaveSummary } from './leave'
+import { formatDays, leaveDaysOf, leaveSummary, overlappingAbsences } from './leave'
 import type { Absence, LeaveBalance } from '../types'
 
 function abs(partial: Partial<Absence> & Pick<Absence, 'start_date' | 'end_date'>): Absence {
@@ -57,6 +57,30 @@ describe('leaveSummary', () => {
     const s = leaveSummary('a', 2026, absences, balances, today)
     expect(s.remaining).toBe(25 + 3.5 - 8 - 5)
     expect(s.isDefault).toBe(false)
+  })
+})
+
+describe('chevauchements', () => {
+  it('ne compte pas deux fois les mêmes jours', () => {
+    const today = new Date(2026, 9, 20)
+    const doubled: Absence[] = [
+      abs({ start_date: '2026-02-16', end_date: '2026-02-21' }), // 6 j
+      abs({ start_date: '2026-02-18', end_date: '2026-02-25' }), // chevauche : 18→21 déjà comptés, +4 (23,24,25 + 18→21 non) → 22(dim) exclu
+    ]
+    const s = leaveSummary('a', 2026, doubled, [], today)
+    expect(s.taken).toBe(9) // 16→21 (6) + 23,24,25 (3)
+  })
+
+  it('détecte une absence qui chevauche', () => {
+    const existing: Absence[] = [
+      abs({ id: 'e1', start_date: '2026-03-02', end_date: '2026-03-07' }),
+      abs({ id: 'e2', start_date: '2026-03-16', end_date: '2026-03-16', status: 'rejected' }),
+    ]
+    expect(overlappingAbsences(existing, 'a', '2026-03-07', '2026-03-10').map((a) => a.id)).toEqual(['e1'])
+    expect(overlappingAbsences(existing, 'a', '2026-03-09', '2026-03-10')).toEqual([])
+    expect(overlappingAbsences(existing, 'a', '2026-03-16', '2026-03-16')).toEqual([]) // refusée : ignorée
+    expect(overlappingAbsences(existing, 'a', '2026-03-02', '2026-03-02', 'e1')).toEqual([]) // édition de e1
+    expect(overlappingAbsences(existing, 'b', '2026-03-02', '2026-03-07')).toEqual([])
   })
 })
 
