@@ -133,6 +133,10 @@ export default function AutoplanModal({
         dayIso <= a.end_date
     )?.status
 
+  /** Seuls les créneaux des personnes cochées sont remplacés ; les autres restent intacts. */
+  const replacedShifts = weekShifts.filter((s) => selected.has(s.employee_id))
+  const replacedNames = [...new Set(replacedShifts.map((s) => nameOf(s.employee_id)))].sort()
+
   async function apply() {
     if (!result) return
     if (hasConflicts) {
@@ -140,9 +144,9 @@ export default function AutoplanModal({
       return
     }
     if (
-      weekShifts.length > 0 &&
+      replacedShifts.length > 0 &&
       !window.confirm(
-        `Cette semaine contient déjà ${weekShifts.length} créneau(x) pour ce groupe. Les remplacer par la proposition ?`
+        `Les ${replacedShifts.length} créneau(x) déjà présents cette semaine pour ${replacedNames.join(', ')} seront remplacés par la proposition. Continuer ?`
       )
     ) {
       return
@@ -153,13 +157,13 @@ export default function AutoplanModal({
       data: { user },
     } = await supabase.auth.getUser()
 
-    if (weekShifts.length > 0) {
+    if (replacedShifts.length > 0) {
       const { error: delError } = await supabase
         .from('shifts')
         .delete()
         .in(
           'id',
-          weekShifts.map((s) => s.id)
+          replacedShifts.map((s) => s.id)
         )
       if (delError) {
         setApplying(false)
@@ -331,9 +335,10 @@ export default function AutoplanModal({
             >
               {result ? 'Proposer une autre variante' : 'Générer la proposition'}
             </button>
-            {weekShifts.length > 0 && (
+            {replacedShifts.length > 0 && (
               <span className="text-xs text-amber-800">
-                Cette semaine a déjà {weekShifts.length} créneau(x) : appliquer les remplacera.
+                Appliquer remplacera les {replacedShifts.length} créneau(x) déjà présents de{' '}
+                {replacedNames.join(', ')}. Les autres personnes ne sont pas touchées.
               </span>
             )}
           </div>
