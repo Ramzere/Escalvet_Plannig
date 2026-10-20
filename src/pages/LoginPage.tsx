@@ -26,9 +26,11 @@ export default function LoginPage() {
     <div className="flex min-h-svh items-center justify-center bg-sand-50 px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-600 text-xl font-semibold text-white">
-            E
-          </div>
+          <img
+            src="/logoEscalVet.jpeg"
+            alt="Escal'Vet"
+            className="mx-auto mb-3 h-20 w-20 rounded-2xl object-cover shadow-sm"
+          />
           <h1 className="text-xl font-semibold text-brand-900">Escal&apos;vet</h1>
           <p className="mt-1 text-sm text-brand-700/70">Planning de l&apos;équipe</p>
         </div>
