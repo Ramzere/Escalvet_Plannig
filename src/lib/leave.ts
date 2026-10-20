@@ -55,6 +55,15 @@ export function overlappingAbsences(
   )
 }
 
+/**
+ * Un motif d'absence qui, par nature, ne consomme pas de congés : école
+ * (alternance), arrêt maladie, formation, férié, sans solde, fin de contrat.
+ * Même liste que la migration du schéma SQL.
+ */
+export function reasonCountsAsLeave(reason: string): boolean {
+  return !/(école|ecole|arr[êe]t|maladie|formation|f[ée]ri[ée]|sans solde|fin de contrat)/i.test(reason)
+}
+
 export interface LeaveSummary {
   employeeId: string
   year: number

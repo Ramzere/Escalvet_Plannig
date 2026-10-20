@@ -4,7 +4,7 @@ import type { Absence, Profile } from '../types'
 import { weekDays } from '../lib/hours'
 import { format } from 'date-fns'
 import ErrorBanner from './ErrorBanner'
-import { overlappingAbsences } from '../lib/leave'
+import { overlappingAbsences, reasonCountsAsLeave } from '../lib/leave'
 
 export default function AbsenceBar({
   team,
@@ -23,6 +23,8 @@ export default function AbsenceBar({
   const [editing, setEditing] = useState<Absence | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [countsAsLeave, setCountsAsLeave] = useState(true)
+  const [leaveTouched, setLeaveTouched] = useState(false)
   const startDateRef = useRef<HTMLInputElement>(null)
   const endDateRef = useRef<HTMLInputElement>(null)
 
@@ -51,7 +53,7 @@ export default function AbsenceBar({
     const start_date = String(form.get('start_date'))
     const end_date = String(form.get('end_date'))
     const reason = String(form.get('reason') || 'Congés')
-    const counts_as_leave = form.get('counts_as_leave') === 'on'
+    const counts_as_leave = countsAsLeave
     if (!employee_id || !start_date || !end_date) {
       setBusy(false)
       return
@@ -91,6 +93,15 @@ export default function AbsenceBar({
 
   function openEdit(a: Absence) {
     setEditing(a)
+    setCountsAsLeave(a.counts_as_leave)
+    setLeaveTouched(true)
+    setFormOpen(true)
+  }
+
+  function openNew() {
+    setEditing(null)
+    setCountsAsLeave(true)
+    setLeaveTouched(false)
     setFormOpen(true)
   }
 
@@ -138,7 +149,7 @@ export default function AbsenceBar({
           Absences (congés, repos...) — réduisent les heures théoriques au prorata des jours
         </p>
         <button
-          onClick={() => (formOpen ? closeForm() : setFormOpen(true))}
+          onClick={() => (formOpen ? closeForm() : openNew())}
           className="rounded-lg bg-brand-600 px-3 py-1 text-xs font-medium text-white hover:bg-brand-700"
         >
           {formOpen ? 'Annuler' : '+ Ajouter une absence'}
@@ -203,14 +214,20 @@ export default function AbsenceBar({
               name="reason"
               placeholder="Congés"
               defaultValue={editing?.reason ?? 'Congés'}
+              onChange={(e) => {
+                if (!leaveTouched) setCountsAsLeave(reasonCountsAsLeave(e.target.value))
+              }}
               className="w-32 rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
             />
           </div>
           <label className="flex items-center gap-2 pb-1.5 text-xs text-brand-900">
             <input
-              name="counts_as_leave"
               type="checkbox"
-              defaultChecked={editing ? editing.counts_as_leave : true}
+              checked={countsAsLeave}
+              onChange={(e) => {
+                setLeaveTouched(true)
+                setCountsAsLeave(e.target.checked)
+              }}
             />
             Décompter des congés
           </label>

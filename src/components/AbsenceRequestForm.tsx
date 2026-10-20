@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Absence } from '../types'
 import ErrorBanner from './ErrorBanner'
-import { overlappingAbsences } from '../lib/leave'
+import { overlappingAbsences, reasonCountsAsLeave } from '../lib/leave'
 import StatusBadge from './StatusBadge'
 
 export default function AbsenceRequestForm({
@@ -16,6 +16,13 @@ export default function AbsenceRequestForm({
 }) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [countsAsLeave, setCountsAsLeave] = useState(true)
+  const [touched, setTouched] = useState(false)
+
+  /** Tant que l'employée n'a pas touché la case, elle suit le motif saisi. */
+  function onReasonChange(reason: string) {
+    if (!touched) setCountsAsLeave(reasonCountsAsLeave(reason))
+  }
 
   const myRequests = requests
     .filter((a) => a.employee_id === employeeId)
@@ -27,7 +34,7 @@ export default function AbsenceRequestForm({
     const start_date = String(form.get('start_date'))
     const end_date = String(form.get('end_date'))
     const reason = String(form.get('reason') || 'Congés')
-    const counts_as_leave = form.get('counts_as_leave') === 'on'
+    const counts_as_leave = countsAsLeave
     if (!start_date || !end_date) return
     if (end_date < start_date) {
       setError('La date de fin doit être après la date de début.')
@@ -57,6 +64,8 @@ export default function AbsenceRequestForm({
       return
     }
     ;(e.target as HTMLFormElement).reset()
+    setCountsAsLeave(true)
+    setTouched(false)
     onChanged()
   }
 
@@ -106,11 +115,19 @@ export default function AbsenceRequestForm({
             name="reason"
             placeholder="Congés"
             defaultValue="Congés"
+            onChange={(e) => onReasonChange(e.target.value)}
             className="w-full rounded-lg border border-sand-300 bg-sand-50 px-2 py-1.5 text-sm outline-none focus:border-brand-400"
           />
         </div>
         <label className="flex items-center gap-2 pb-1.5 text-xs text-brand-900">
-          <input name="counts_as_leave" type="checkbox" defaultChecked />
+          <input
+            type="checkbox"
+            checked={countsAsLeave}
+            onChange={(e) => {
+              setTouched(true)
+              setCountsAsLeave(e.target.checked)
+            }}
+          />
           Décompter de mes congés
         </label>
         <button

@@ -134,7 +134,7 @@ alter table public.absences add column if not exists admin_note text;
 -- classées une fois d'après leur motif.
 alter table public.absences add column if not exists counts_as_leave boolean not null default true;
 update public.absences set counts_as_leave = false
-  where counts_as_leave and reason ~* '(école|ecole|arr[êe]t|maladie|formation|f[ée]ri[ée]|sans solde)';
+  where counts_as_leave and reason ~* '(école|ecole|arr[êe]t|maladie|formation|f[ée]ri[ée]|sans solde|fin de contrat)';
 
 alter table public.absences drop constraint if exists absences_status_check;
 alter table public.absences add constraint absences_status_check

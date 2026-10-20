@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDays, leaveDaysOf, leaveSummary, overlappingAbsences } from './leave'
+import { formatDays, leaveDaysOf, leaveSummary, overlappingAbsences, reasonCountsAsLeave } from './leave'
 import type { Absence, LeaveBalance } from '../types'
 
 function abs(partial: Partial<Absence> & Pick<Absence, 'start_date' | 'end_date'>): Absence {
@@ -81,6 +81,15 @@ describe('chevauchements', () => {
     expect(overlappingAbsences(existing, 'a', '2026-03-16', '2026-03-16')).toEqual([]) // refusée : ignorée
     expect(overlappingAbsences(existing, 'a', '2026-03-02', '2026-03-02', 'e1')).toEqual([]) // édition de e1
     expect(overlappingAbsences(existing, 'b', '2026-03-02', '2026-03-07')).toEqual([])
+  })
+})
+
+describe('reasonCountsAsLeave', () => {
+  it('reconnaît les motifs hors congés', () => {
+    for (const r of ['École', 'ecole', 'Arrêt maladie', 'arret', 'Formation', 'Férié', 'Sans solde', 'Fin de contrat', 'FIN DE CONTRAT']) {
+      expect(reasonCountsAsLeave(r)).toBe(false)
+    }
+    for (const r of ['Congés', 'CP', 'Vacances', 'Repos', 'RTT']) expect(reasonCountsAsLeave(r)).toBe(true)
   })
 })
 
