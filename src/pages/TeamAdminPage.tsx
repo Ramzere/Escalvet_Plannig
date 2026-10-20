@@ -14,6 +14,7 @@ import { formatHours } from '../lib/hours'
 import { CONTRACT_TYPES } from '../types'
 import type { ContractType, Group } from '../types'
 import ErrorBanner from '../components/ErrorBanner'
+import { SUPPORT_CONTACT } from '../config'
 import OvertimePendingPanel from '../components/OvertimePendingPanel'
 import OvertimeYearlySummary from '../components/OvertimeYearlySummary'
 import PreviousYearBalance from '../components/PreviousYearBalance'
@@ -188,8 +189,20 @@ export default function TeamAdminPage() {
           ))}
         </div>
         <div className="mt-3 rounded-lg bg-sand-50 px-3 py-2 text-xs text-brand-700/60">
-          Pour créer un nouveau compte : Dashboard Supabase → Authentication → Add user (email +
-          mot de passe). Le profil apparaît ensuite ici automatiquement, à compléter.
+          Pour créer le compte d&apos;un·e nouvel·le employé·e, contacte {SUPPORT_CONTACT.name}
+          {SUPPORT_CONTACT.phone && (
+            <>
+              {' '}
+              au{' '}
+              <a
+                href={`tel:${SUPPORT_CONTACT.phone.replace(/\s/g, '')}`}
+                className="font-medium text-brand-700 hover:underline"
+              >
+                {SUPPORT_CONTACT.phone}
+              </a>
+            </>
+          )}
+          . Le profil apparaîtra ensuite ici, à compléter (nom, groupe, contrat).
         </div>
       </div>
 
