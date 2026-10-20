@@ -167,26 +167,48 @@ export default function TeamAdminPage() {
       <div className="rounded-2xl border border-sand-200 bg-white p-2">
         <p className="px-2 py-2 text-xs font-medium text-brand-700/60">Équipe</p>
         {loading && <p className="px-2 py-2 text-sm text-brand-700/50">Chargement…</p>}
-        <div className="space-y-1">
-          {team.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setSelectedId(t.id)}
-              className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${
-                selectedId === t.id ? 'bg-brand-600 text-white' : 'hover:bg-sand-100 text-brand-900'
-              }`}
-            >
-              <span>
-                {t.full_name}
-                {t.is_owner ? ' 👑' : ''}
-              </span>
-              <span
-                className={`text-xs ${selectedId === t.id ? 'text-white/70' : 'text-brand-700/50'}`}
-              >
-                {t.group_name === 'asv' ? 'ASV' : 'Véto'}
-              </span>
-            </button>
-          ))}
+        <div className="space-y-3">
+          {(
+            [
+              { group: 'veterinaire', label: 'Vétérinaires' },
+              { group: 'asv', label: 'ASV' },
+            ] as { group: Group; label: string }[]
+          ).map(({ group, label }) => {
+            const members = team.filter((t) => t.group_name === group)
+            if (members.length === 0) return null
+            return (
+              <div key={group}>
+                <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-brand-700/50">
+                  {label}
+                </p>
+                <div className="space-y-1">
+                  {members.map((t) => (
+                    <button
+                      key={t.id}
+                      onClick={() => setSelectedId(t.id)}
+                      className={`flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition ${
+                        selectedId === t.id
+                          ? 'bg-brand-600 text-white'
+                          : 'hover:bg-sand-100 text-brand-900'
+                      } ${t.active ? '' : 'opacity-50'}`}
+                    >
+                      <span>
+                        {t.full_name}
+                        {t.is_owner ? ' 👑' : ''}
+                      </span>
+                      {!t.active && (
+                        <span
+                          className={`text-xs ${selectedId === t.id ? 'text-white/70' : 'text-brand-700/50'}`}
+                        >
+                          inactif
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })}
         </div>
         <div className="mt-3 rounded-lg bg-sand-50 px-3 py-2 text-xs text-brand-700/60">
           Pour créer le compte d&apos;un·e nouvel·le employé·e, contacte {SUPPORT_CONTACT.name}
