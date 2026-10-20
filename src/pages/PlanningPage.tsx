@@ -19,6 +19,7 @@ import AbsenceBar from '../components/AbsenceBar'
 import AbsenceRequestForm from '../components/AbsenceRequestForm'
 import OvertimeForm from '../components/OvertimeForm'
 import PosteLegend from '../components/PosteLegend'
+import AutoplanModal from '../components/AutoplanModal'
 
 const DAY_LABELS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const PERIODS: { key: Period; label: string }[] = [
@@ -35,6 +36,7 @@ export default function PlanningPage() {
     period: Period
     shift: Shift | null
   } | null>(null)
+  const [autoplanOpen, setAutoplanOpen] = useState(false)
 
   const days = weekDays(weekStart)
   const rangeFrom = format(startOfYear(new Date(weekStart)), 'yyyy-MM-dd')
@@ -76,6 +78,14 @@ export default function PlanningPage() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <WeekNavigator weekStart={weekStart} onChange={setWeekStart} />
+        {isOwner && (
+          <button
+            onClick={() => setAutoplanOpen(true)}
+            className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+          >
+            ✨ Proposer un planning
+          </button>
+        )}
         {isOwner && hasBothGroups && (
           <div className="flex rounded-lg border border-sand-300 bg-white p-1 text-sm">
             {(['asv', 'veterinaire'] as Group[]).map((g) => (
@@ -296,6 +306,19 @@ export default function PlanningPage() {
       </div>
 
       {teamLoading && <p className="text-sm text-brand-700/50">Chargement de l&apos;équipe…</p>}
+
+      {autoplanOpen && (
+        <AutoplanModal
+          weekStart={weekStart}
+          team={visibleTeam}
+          contracts={contracts}
+          absences={absences}
+          overtimeRequests={overtimeRequests}
+          yearShifts={yearShifts}
+          onClose={() => setAutoplanOpen(false)}
+          onApplied={reloadShifts}
+        />
+      )}
 
       {editing && (
         <ShiftEditorModal

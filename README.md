@@ -178,6 +178,15 @@ gh repo create escalvet --private --source=. --push
 - **Qui modifie quoi** : seule la personne propriétaire (is_owner) peut
   créer/modifier/supprimer des créneaux, gérer les comptes et les contrats.
   Les autres comptes sont en lecture seule sur le planning de leur groupe.
+- **Proposer un planning** (propriétaire, bouton au-dessus du planning) :
+  génère automatiquement la semaine affichée à partir des horaires de la
+  semaine précédente ou de la semaine type ASV. Le générateur respecte les
+  absences validées, vise le contrat de chacune (corrigé en douceur par le
+  cumul annuel : qui est en déficit reçoit un peu plus d'heures), privilégie
+  fortement les journées entières plutôt que les demi-journées isolées, et
+  évite de redonner le samedi à la même personne deux semaines de suite.
+  La proposition s'affiche avec le solde de chacune ; on peut demander une
+  autre variante, puis l'appliquer et retoucher les créneaux à la main.
 - **Qui voit quoi** : chacun voit les créneaux et les absences validées de
   son groupe (pour savoir avec qui il travaille), mais uniquement son propre
   solde d'heures, ses contrats, ses demandes d'absence et d'heures sup. Le
